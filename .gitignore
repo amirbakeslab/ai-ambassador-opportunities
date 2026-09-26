@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.env
+.env.*
+!.env.example
+*credentials*.json
+*service-account*.json
+backups/
+ambassador-backups/
+candidates/
+.ambassador-cache/
+.DS_Store

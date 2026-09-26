@@ -1,0 +1,431 @@
+{
+  "description": "Snapshot of the public catalog bundled for offline use. The live Google Sheet is authoritative.",
+  "capturedAt": "2026-09-25T20:51:16.589Z",
+  "sourceUrl": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSPmNeiTw-xmXCIxrNL__gRZnl7wlC8pv94uLYAM7sTiLk4rQ4gPl8nGA_J9WZcy9vwiQsrOKuo4cMo/pub?gid=1872724035&single=true&output=csv",
+  "sheetUrl": "https://docs.google.com/spreadsheets/d/1TKibIwQrSLoJOYSswXYuqfRsFrkRyVIsqiw4F6dp-Rc/edit",
+  "records": [
+    {
+      "id": "cursor-ambassadors",
+      "company": "Cursor",
+      "program": "Cursor Ambassadors",
+      "category": "AI developer tools",
+      "description": "Help developers learn Cursor and organize community activities.",
+      "url": "https://anysphere.typeform.com/to/YreXrWZd",
+      "status": "Rolling",
+      "deadline": null,
+      "deadlineNotes": "Weekly application review; no closing date published.",
+      "programDates": "Flexible participation; renewal after one year.",
+      "workload": "Regular involvement; hours not published.",
+      "ambassadorBenefits": "Personal Cursor credits, early features, merch, team Slack access.",
+      "communityBenefits": "Meetup cost funding and stickers. Campus-wide Pro access is not promised.",
+      "expectations": "Help users, host meetups or hackathons, share feedback, support forums.",
+      "eligibility": "18+; application and code of conduct.",
+      "geography": "Multiple countries; English fluency not required.",
+      "localApplicability": "Potential fit; acceptance and local availability unconfirmed.",
+      "restrictions": "Preference against participating in other advocacy programs.",
+      "assessment": "Worth considering",
+      "assessmentReason": "Published event support and personal benefits; clarify competing roles.",
+      "sourceIds": [
+        "cursor"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "microsoft-student-ambassadors",
+      "company": "Microsoft",
+      "program": "Student Ambassadors",
+      "category": "Developer / cloud",
+      "description": "Learn Microsoft technology and support student technical communities.",
+      "url": "https://mvp.microsoft.com/studentambassadors",
+      "status": "Registration available",
+      "deadline": null,
+      "deadlineNotes": "No closing date published; registration replaces application.",
+      "programDates": "No fixed term published in reviewed overview.",
+      "workload": "Registration activities first; ongoing hours not published.",
+      "ambassadorBenefits": "After onboarding: Microsoft 365, Visual Studio Enterprise, $150 monthly Azure credits, badges and swag; Microsoft team access.",
+      "communityBenefits": "Peer learning activities and technical community building. No campus-wide license grant stated.",
+      "expectations": "Complete registration activities, such as social content or campus learning playlists, then onboard.",
+      "eligibility": "Students across degree fields and levels, full-time or part-time, at two- or four-year institutions.",
+      "geography": "Country-specific restrictions not established by reviewed overview.",
+      "localApplicability": "Potential fit; confirm registration terms.",
+      "restrictions": "Benefit milestones and other-program rules need checking.",
+      "assessment": "Worth considering",
+      "assessmentReason": "Substantial published tool benefits; confirm required activities and benefit conditions.",
+      "sourceIds": [
+        "microsoft-students"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "microsoft-copilot-fall-2026",
+      "company": "Microsoft",
+      "program": "Copilot Student Ambassador",
+      "category": "AI",
+      "description": "Paid campus marketing role introducing students to Copilot.",
+      "url": "https://oncampusnation.com/job/microsoft-copilot-ambassador-fall-2026/",
+      "status": "Rolling",
+      "deadline": null,
+      "deadlineNotes": "Official recruitment page says open, filling on a rolling basis; confirm remaining places.",
+      "programDates": "Fall 2026; eight-week campaign. Exact dates not published.",
+      "workload": "3–5 hours/week.",
+      "ambassadorBenefits": "Up to $1,500 on successful completion, possible performance bonuses, Copilot team feedback access.",
+      "communityBenefits": "Campus workshops and demonstrations; no blanket software or funding entitlement stated.",
+      "expectations": "Social/events track: 3 Reels, 2 tabling events, 1 workshop. Events track: 2 tabling events, 3 workshops. Training and engagement/download goals.",
+      "eligibility": "Full-time undergraduate or graduate at an affiliated four-year university; active campus presence and AI tool use.",
+      "geography": "Affiliated universities; campus eligibility must be checked.",
+      "localApplicability": "Unconfirmed: verify Pitt is an affiliated campus.",
+      "restrictions": "Compensation conditional on all deliverables. Ask about download targets and other-company roles.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Real compensation, but confirm Pitt eligibility and campaign targets.",
+      "sourceIds": [
+        "copilot",
+        "copilot-application"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "firecrawl-ambassadors",
+      "company": "Firecrawl",
+      "program": "Ambassador creator program",
+      "category": "AI developer tools",
+      "description": "Creator partnership for people with an established tech audience.",
+      "url": "https://m1ljvx32jtt.typeform.com/to/Ng0Np34p",
+      "status": "Rolling",
+      "deadline": null,
+      "deadlineNotes": "Applications reviewed weekly; no closing date published.",
+      "programDates": "Benefits last while participating; fixed term not published.",
+      "workload": "Per-video work; no monthly quotas advertised.",
+      "ambassadorBenefits": "Payment per video, free Firecrawl, early access, merch and direct team Slack channel.",
+      "communityBenefits": "No campus-wide credits or event support stated.",
+      "expectations": "Pitch ideas and deliver approved videos covering AI, developer tools or software engineering.",
+      "eligibility": "Established tech audience; specific follower threshold not stated in reviewed text.",
+      "geography": "Not published in reviewed overview.",
+      "localApplicability": "Fits student creators with an existing audience; not a dedicated campus-lead role.",
+      "restrictions": "Rates and content approval terms must be agreed.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Paid creator work; clarify rates and whether it brings value to club members.",
+      "sourceIds": [
+        "firecrawl"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "openai-student-collective",
+      "company": "OpenAI",
+      "program": "Student Collective Campus Lead",
+      "category": "AI",
+      "description": "Paired campus leads organize student AI learning and projects.",
+      "url": "https://openai.com/student-collective/",
+      "status": "Future interest only",
+      "deadline": null,
+      "deadlineNotes": "Fall 2026 U.S. intake closed. Form accepts future-cohort interest; next U.S. deadline unknown.",
+      "programDates": "Late August 2026–June 2027 for described cohort.",
+      "workload": "4–6 hours/week.",
+      "ambassadorBenefits": "ChatGPT subscription, Codex credits, semester stipend, training and team access.",
+      "communityBenefits": "Event funding, credits, merch and workshop materials.",
+      "expectations": "Four workshops/semester, weekly studio hours, one showcase/semester, ongoing community support.",
+      "eligibility": "18+ undergraduate as of August 2026, graduating after December 2027; work authorization in country of study.",
+      "geography": "U.S., Canada, UK, France, Germany, India, Japan, South Korea; other countries can express interest.",
+      "localApplicability": "U.S. geography fits, but current cohort intake is closed.",
+      "restrictions": "Cannot currently be an ambassador or intern for another AI program/company.",
+      "assessment": "Worth considering",
+      "assessmentReason": "Funding and stipend support meaningful activity; next intake and exclusivity matter.",
+      "sourceIds": [
+        "openai-collective"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "openai-campus-network",
+      "company": "OpenAI",
+      "program": "Campus Network club interest",
+      "category": "AI",
+      "description": "Club partnership interest route, with an option to request ambassador consideration.",
+      "url": "https://openai.com/index/openai-campus-network-student-club-interest-form/",
+      "status": "Interest form available",
+      "deadline": null,
+      "deadlineNotes": "Interest form visible; no deadline published.",
+      "programDates": "Not published.",
+      "workload": "Not published.",
+      "ambassadorBenefits": "Student-leader connections and early-access opportunities advertised; specific entitlements not stated.",
+      "communityBenefits": "Support for student events, workshops and research advertised; amounts and eligibility not stated.",
+      "expectations": "Describe the club, activity, reach, AI use and requested support.",
+      "eligibility": "Student club leaders.",
+      "geography": "Universities worldwide.",
+      "localApplicability": "Potential club-level route; acceptance unconfirmed.",
+      "restrictions": "Interest submission is not acceptance or a guaranteed ambassador appointment.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Useful club inquiry route; obtain concrete support and obligations before committing.",
+      "sourceIds": [
+        "openai-network"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "anthropic-campus-2026",
+      "company": "Anthropic",
+      "program": "Claude Campus Program",
+      "category": "AI",
+      "description": "Undergraduate Builder Clubs, master's Campus Conversations, and PhD/postdoc science tracks.",
+      "url": "https://claude.com/programs/campus",
+      "status": "Closed",
+      "deadline": "2026-09-12",
+      "deadlineNotes": "September 1–12 application window; deadline timezone not stated. Page explicitly says closed for Fall 2026.",
+      "programDates": "September 2026–June 2027.",
+      "workload": "Hours not published on reviewed page.",
+      "ambassadorBenefits": "USD 3,600 stipend, subject to terms; access to Anthropic teams and ambassador community.",
+      "communityBenefits": "Workshops, guest speakers and shared resources such as API credits for Builder Clubs.",
+      "expectations": "Lead track-specific workshops, discussions, hackathons or research learning activities.",
+      "eligibility": "18+ with work authorization; degree/research status must match chosen track.",
+      "geography": "Worldwide; graduate and PhD pilots may select fewer schools.",
+      "localApplicability": "Potential future cohort; fall application window has closed.",
+      "restrictions": "Ask about campus vacancies, exclusivity and next intake. Pilot school coverage may be limited.",
+      "assessment": "Worth considering",
+      "assessmentReason": "Published stipend and campus resources; monitor next application window.",
+      "sourceIds": [
+        "anthropic"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "github-campus-experts",
+      "company": "GitHub",
+      "program": "Campus Experts",
+      "category": "Developer / cloud",
+      "description": "Train student leaders to build inclusive technical communities.",
+      "url": "https://education.github.com/campus_experts",
+      "status": "Needs verification",
+      "deadline": null,
+      "deadlineNotes": "Docs describe a July application month. Check signed-in portal for next intake; no future year assumed.",
+      "programDates": "Six-week training; subsequent role duration not established by reviewed sources.",
+      "workload": "Training and community activities; weekly hours not published.",
+      "ambassadorBenefits": "Leadership, speaking, writing and software-development training; mentorship and GitHub support.",
+      "communityBenefits": "Support for student technical communities, events and projects; funding amount not stated.",
+      "expectations": "Application and video resume, training, community impact proposal and community leadership.",
+      "eligibility": "18+, higher-education student, GitHub user for 6+ months, >1 year before graduation, verified Student Developer Pack.",
+      "geography": "Global community.",
+      "localApplicability": "Potential fit if individual eligibility criteria are met.",
+      "restrictions": "Campus availability, current intake and other-role rules need verification.",
+      "assessment": "Worth considering",
+      "assessmentReason": "Concrete training and mentorship; verify the next application cycle.",
+      "sourceIds": [
+        "github-apply",
+        "github-about"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "google-gdg-campus",
+      "company": "Google",
+      "program": "GDG on Campus organizer",
+      "category": "Developer / cloud",
+      "description": "Lead a student developer community around Google technologies.",
+      "url": "https://app.advocu.com/gdg/join",
+      "status": "Needs verification",
+      "deadline": null,
+      "deadlineNotes": "Official site links an organizer portal; active intake not verified.",
+      "programDates": "Not published on reviewed overview.",
+      "workload": "Not published on reviewed overview.",
+      "ambassadorBenefits": "Hands-on experience, skills and developer community connections; specific perks not established.",
+      "communityBenefits": "Technical community and learning activities; funding and credits not confirmed.",
+      "expectations": "Organizer responsibilities must be checked in the application portal.",
+      "eligibility": "Campus organizer criteria require portal review.",
+      "geography": "Global developer community; local availability unverified.",
+      "localApplicability": "Check for an existing Pitt chapter and organizer opening.",
+      "restrictions": "Do not assume a new chapter or multiple campus leads are permitted.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Official organizer route exists; confirm benefits, workload and Pitt availability.",
+      "sourceIds": [
+        "google-community"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "lovable-campus-leaders",
+      "company": "Lovable",
+      "program": "Campus Leaders",
+      "category": "AI developer tools",
+      "description": "Student community leaders organize building activities at universities.",
+      "url": "https://community.lovable.app/ambassadors",
+      "status": "Needs verification",
+      "deadline": null,
+      "deadlineNotes": "Official site points to community hub; an active application form was not located in reviewed content.",
+      "programDates": "Quarterly cohorts advertised; specific cohort dates unknown.",
+      "workload": "Not published.",
+      "ambassadorBenefits": "Community access; individual credits or compensation not confirmed in reviewed page.",
+      "communityBenefits": "Lovable supports community-organized events; support amounts not stated.",
+      "expectations": "Activate university community through workshops or building events; exact quotas unknown.",
+      "eligibility": "Student track; detailed requirements not published in reviewed overview.",
+      "geography": "Global community; campus selection unverified.",
+      "localApplicability": "Potential fit; request next cohort and Pitt eligibility details.",
+      "restrictions": "Application URL is a program hub, not a verified active form.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Relevant program, but obtain an active application and concrete benefit terms.",
+      "sourceIds": [
+        "lovable"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "aws-cloud-club-captain",
+      "company": "AWS",
+      "program": "Cloud Club Captain / student leadership",
+      "category": "Developer / cloud",
+      "description": "Student cloud-community leadership; confirm current program naming and application route.",
+      "url": "https://builder.aws.com/community/student-builder-groups",
+      "status": "Needs verification",
+      "deadline": null,
+      "deadlineNotes": "Current intake unverified. Historical 2025 announcement must not be treated as open recruitment.",
+      "programDates": "Current term not verified.",
+      "workload": "Current expectations not verified.",
+      "ambassadorBenefits": "Historical 2025 announcement advertised credits, certification vouchers, mentorship and swag; current terms unverified.",
+      "communityBenefits": "Student cloud-learning community; current event support unverified.",
+      "expectations": "Current organizer obligations require confirmation.",
+      "eligibility": "Current student-leader requirements require confirmation.",
+      "geography": "Current country/campus coverage unverified.",
+      "localApplicability": "Coordinate with the existing campus club before applying.",
+      "restrictions": "Current program page could not be read by the research tool. Listed URL is a program hub.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Keep as a research lead until current application, benefits and workload are verified.",
+      "sourceIds": [
+        "aws-historical",
+        "aws-current"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "perplexity-campus-2025",
+      "company": "Perplexity",
+      "program": "Campus Partner / Strategist (2025)",
+      "category": "AI",
+      "description": "Campus growth-marketing and affiliate program.",
+      "url": "https://perplexity.typeform.com/to/I2XhEa3r",
+      "status": "Historical",
+      "deadline": "2025-08-15",
+      "deadlineNotes": "Official page still describes Fall 2025. Do not treat its Apply button as a current intake.",
+      "programDates": "Fall 2025; current cohort unverified.",
+      "workload": "Campaign tasks and referrals; exact hours not stated.",
+      "ambassadorBenefits": "Historical offer: Pro, Comet access, affiliate cash and task bonuses, merch; selective top-performer rewards.",
+      "communityBenefits": "Campus events; no general member subscription entitlement confirmed.",
+      "expectations": "Run marketing activities and drive Comet signups.",
+      "eligibility": "All majors; historical page states up to three strategists per campus.",
+      "geography": "Historical page advertised worldwide applications.",
+      "localApplicability": "Current recruitment and campus vacancies unverified.",
+      "restrictions": "Referral-dependent rewards; old application may be stale.",
+      "assessment": "Needs clarification",
+      "assessmentReason": "Confirm a current cohort and value to members before considering promotional work.",
+      "sourceIds": [
+        "perplexity"
+      ],
+      "lastChecked": "2026-09-25"
+    },
+    {
+      "id": "nvidia-dli-educator",
+      "company": "NVIDIA",
+      "program": "DLI University Ambassador",
+      "category": "AI education",
+      "description": "Educator-led AI workshop program; not a general student ambassadorship.",
+      "url": "https://www.nvidia.com/en-us/training/educator-programs/university-ambassador-program/",
+      "status": "Invitation only",
+      "deadline": null,
+      "deadlineNotes": "Requires invitation from a local NVIDIA representative.",
+      "programDates": "Not published in reviewed overview.",
+      "workload": "Workshop-specific instructor certification and delivery.",
+      "ambassadorBenefits": "Free instructor certification, credentials and teaching resources.",
+      "communityBenefits": "Free academic workshops and self-paced courses for students in the instructor's class.",
+      "expectations": "Complete technical and delivery evaluations; teach approved DLI workshops.",
+      "eligibility": "Educator/trainer employed by an academic institution, local NVIDIA invitation, certification for at least one workshop.",
+      "geography": "Local representative nomination required.",
+      "localApplicability": "Faculty/qualified employed instructor route; ordinary student enrollment is insufficient.",
+      "restrictions": "Invite and employment requirements; students should work with an eligible educator.",
+      "assessment": "Not a student role",
+      "assessmentReason": "Useful faculty partnership route, but unsuitable as a general undergraduate ambassador opening.",
+      "sourceIds": [
+        "nvidia"
+      ],
+      "lastChecked": "2026-09-25"
+    }
+  ],
+  "sources": [
+    {
+      "id": "cursor",
+      "url": "https://cursor.com/ambassadors",
+      "supports": "Benefits, weekly review, eligibility, term and advocacy preference"
+    },
+    {
+      "id": "microsoft-students",
+      "url": "https://learn.microsoft.com/en-us/training/student-hub/become-a-student-ambassador",
+      "supports": "Registration, activities, eligibility and benefits"
+    },
+    {
+      "id": "copilot",
+      "url": "https://www.microsoft.com/en-us/microsoft-copilot/for-individuals/copilot-student-ambassador",
+      "supports": "Workload, compensation and affiliated-campus condition"
+    },
+    {
+      "id": "copilot-application",
+      "url": "https://oncampusnation.com/job/microsoft-copilot-ambassador-fall-2026/",
+      "supports": "Microsoft-linked recruiting partner: deliverables, eight-week term and rolling intake"
+    },
+    {
+      "id": "firecrawl",
+      "url": "https://www.firecrawl.dev/ambassadors",
+      "supports": "Creator eligibility, per-video payment, benefits and weekly review"
+    },
+    {
+      "id": "openai-collective",
+      "url": "https://openai.com/student-collective/",
+      "supports": "U.S. closure, future-interest route, benefits, obligations and exclusivity"
+    },
+    {
+      "id": "openai-network",
+      "url": "https://openai.com/index/openai-campus-network-student-club-interest-form/",
+      "supports": "Club interest form and advertised support"
+    },
+    {
+      "id": "anthropic",
+      "url": "https://claude.com/programs/campus",
+      "supports": "Fall closure, September deadline, three tracks, stipend and term"
+    },
+    {
+      "id": "github-apply",
+      "url": "https://docs.github.com/en/education/about-github-education/use-github-at-your-educational-institution/applying-to-be-a-github-campus-expert",
+      "supports": "Eligibility and recurring July application window"
+    },
+    {
+      "id": "github-about",
+      "url": "https://docs.github.com/en/education/about-github-education/use-github-at-your-educational-institution/about-github-campus-experts",
+      "supports": "Six-week training and community benefits"
+    },
+    {
+      "id": "google-community",
+      "url": "https://developers.google.com/community",
+      "supports": "Official GDG on Campus organizer portal link"
+    },
+    {
+      "id": "lovable",
+      "url": "https://lovable.dev/community",
+      "supports": "Student track, quarterly cohorts and community support"
+    },
+    {
+      "id": "aws-historical",
+      "url": "https://builder.aws.com/content/30aH27Sct6i1eSqKOPEMzwwv3GN/become-an-aws-cloud-club-captain-applications-open",
+      "supports": "Historical 2025 announcement, search-index excerpt only; current terms unverified"
+    },
+    {
+      "id": "aws-current",
+      "url": "https://builder.aws.com/community/student-builder-groups",
+      "supports": "Program hub reachable but body unreadable to research tool; manual review needed"
+    },
+    {
+      "id": "perplexity",
+      "url": "https://www.perplexity.ai/campus-partners",
+      "supports": "Historical Fall 2025 campaign, deadline, rewards and obligations"
+    },
+    {
+      "id": "nvidia",
+      "url": "https://www.nvidia.com/en-us/training/educator-programs/university-ambassador-program/",
+      "supports": "Educator employment/invitation requirements and training benefits"
+    }
+  ]
+}

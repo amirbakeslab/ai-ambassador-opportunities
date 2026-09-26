@@ -1,0 +1,32 @@
+name: Program proposal or correction
+description: Suggest a new program or a correction to the catalog
+labels: [proposal]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: Official program or application URL
+    validations:
+      required: true
+  - type: textarea
+    id: candidate
+    attributes:
+      label: Candidate JSON or correction
+      description: Paste the output of `ambassador propose <url>`, or describe the correction and which catalog ID it applies to.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What the source supports
+      description: Quote or summarise the public source. Do not include personal contact details or private information.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The information comes from an official program page or a clearly identified recruitment partner.
+          required: true
+        - label: This issue contains no private or personal information.
+          required: true

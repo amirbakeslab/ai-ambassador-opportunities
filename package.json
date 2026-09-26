@@ -1,0 +1,48 @@
+{
+  "name": "ai-ambassador-opportunities",
+  "version": "0.1.0",
+  "description": "Browse, research and propose student AI/developer-tool ambassador programs from a public Google Sheet catalog.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ambassador": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "data/catalog-snapshot.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "snapshot": "node dist/scripts/update-snapshot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amirbakeslab/ai-ambassador-opportunities.git"
+  },
+  "keywords": [
+    "cli",
+    "students",
+    "ambassador",
+    "developer-programs",
+    "google-sheets"
+  ],
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}
