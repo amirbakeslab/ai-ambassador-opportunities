@@ -14,9 +14,11 @@ The default catalog was compiled for students at the University of Pittsburgh, s
 Requires Node.js 22 or newer.
 
 ```sh
-npm install -g github:amirbakeslab/ai-ambassador-opportunities
+npm install -g --install-links github:amirbakeslab/ai-ambassador-opportunities
 ambassador --help
 ```
+
+Keep `--install-links`. Without it, npm 10 can leave a global install from a Git URL pointing at a temporary folder that it has already deleted.
 
 Or run it once without a global install:
 
@@ -24,7 +26,7 @@ Or run it once without a global install:
 npx github:amirbakeslab/ai-ambassador-opportunities list
 ```
 
-The package is not published to the npm registry. Both commands install it straight from this repository, which includes the compiled `dist/` output, so nothing is built during installation.
+The package is not published to the npm registry. Both commands install it straight from this repository. The repository includes the compiled `dist/` output, so nothing is built during installation.
 
 ## Browse the catalog
 
