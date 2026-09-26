@@ -24,7 +24,7 @@ Or run it once without a global install:
 npx github:amirbakeslab/ai-ambassador-opportunities list
 ```
 
-The package is not published to the npm registry. Both commands build it from this repository.
+The package is not published to the npm registry. Both commands install it straight from this repository, which includes the compiled `dist/` output, so nothing is built during installation.
 
 ## Browse the catalog
 
@@ -169,7 +169,7 @@ How sync protects the catalog:
 npm install
 npm test            # offline suite, including a local Sheets API stand-in
 npm run typecheck
-npm run build
+npm run build       # commit the updated dist/ with source changes; CI checks they match
 ```
 
 `npm run test:live` runs the live Google Sheets tests. They run only against a disposable copy of the catalog: set `AMBASSADOR_TEST_SHEET_ID` to the copy and `AMBASSADOR_GOOGLE_CREDENTIALS` to credentials with Editor access to it. They refuse to write to the published catalog and restore the copy when they finish.

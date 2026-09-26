@@ -18,11 +18,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "snapshot": "node dist/scripts/update-snapshot.js"
+    "snapshot": "node dist/scripts/update-snapshot.js",
+    "check:dist": "npm run build && git diff --exit-code -- dist"
   },
   "repository": {
     "type": "git",
