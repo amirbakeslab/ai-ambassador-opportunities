@@ -17,12 +17,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "compile": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "snapshot": "node dist/scripts/update-snapshot.js",
-    "check:dist": "npm run build && git diff --exit-code -- dist"
+    "check:dist": "npm run compile && git diff --exit-code -- dist",
+    "snapshot": "node scripts/update-snapshot.mjs"
   },
   "repository": {
     "type": "git",

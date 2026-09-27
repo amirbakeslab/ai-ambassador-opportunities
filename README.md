@@ -171,12 +171,14 @@ How sync protects the catalog:
 npm install
 npm test            # offline suite, including a local Sheets API stand-in
 npm run typecheck
-npm run build       # commit the updated dist/ with source changes; CI checks they match
+npm run compile     # commit the updated dist/ with source changes; CI checks they match
 ```
+
+The compile script is deliberately not named `build`. npm prepares a Git-installed package by running its build scripts (`build`, `prepare` and similar), and that preparation breaks global installs and upgrades. With no such script, installing from GitHub only copies the committed `dist/`.
 
 `npm run test:live` runs the live Google Sheets tests. They run only against a disposable copy of the catalog: set `AMBASSADOR_TEST_SHEET_ID` to the copy and `AMBASSADOR_GOOGLE_CREDENTIALS` to credentials with Editor access to it. They refuse to write to the published catalog and restore the copy when they finish.
 
-`node scripts/update-snapshot.mjs` (after a build) refreshes the bundled offline snapshot from the public feed.
+`npm run snapshot` (after `npm run compile`) refreshes the bundled offline snapshot from the public feed.
 
 ## Sources and attribution
 

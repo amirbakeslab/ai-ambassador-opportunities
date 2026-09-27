@@ -1,5 +1,5 @@
 // Regenerates data/catalog-snapshot.json from the public published catalog.
-// Run after `npm run build`: node scripts/update-snapshot.mjs
+// Run after `npm run compile`: node scripts/update-snapshot.mjs
 import { writeFile } from 'node:fs/promises';
 import { DEFAULT_CSV_URL, DEFAULT_SHEET_URL, sourcesCsvUrl } from '../dist/config.js';
 import { fetchCatalogCsv, parseSourcesCsv } from '../dist/catalog.js';
