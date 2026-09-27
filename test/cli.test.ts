@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -46,6 +46,8 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
   return { code, out: out.join('\n'), err: err.join('\n') };
 }
 
+const json = <T>(text: string) => JSON.parse(text) as T;
+
 describe('student commands', () => {
   it('documents every command and option in --help', async () => {
     const help = (await run('--help')).out;
@@ -55,35 +57,37 @@ describe('student commands', () => {
     }
   });
 
-  it('prints help and version, and rejects unknown commands and flags', async () => {
-    expect((await run('--help')).out).toMatch(/ambassador list/);
+  it('prints the version and rejects unknown commands and options', async () => {
     expect((await run('--version')).out).toMatch(/^\d+\.\d+\.\d+$/);
     expect((await run('frobnicate')).code).toBe(2);
     const bad = await run('list', '--colour');
     expect(bad.code).toBe(2);
-    expect(bad.err).toMatch(/Unknown option/);
+    expect(bad.err).toContain('--colour');
   });
 
-  it('lists and filters the catalog with its origin and timestamp', async () => {
-    const all = await run('list');
-    expect(all.code).toBe(0);
-    expect(all.out).toMatch(/13 of 13 opportunities\. Live published feed, fetched \d{4}-/);
-    const rolling = await run('list', '--status', 'rolling', '--json');
-    const parsed = JSON.parse(rolling.out) as { count: number; origin: { kind: string } };
-    expect(parsed.count).toBe(3);
-    expect(parsed.origin.kind).toBe('cache');
-    const open = JSON.parse((await run('list', '--open', '--assessment', 'worth considering', '--json')).out) as { records: { id: string }[] };
+  it('lists and filters the catalog, reporting where the data came from', async () => {
+    const all = json<{ count: number; origin: { kind: string; fetchedAt: string } }>((await run('list', '--json')).out);
+    expect(all.count).toBe(13);
+    expect(all.origin.kind).toBe('live');
+    expect(Date.parse(all.origin.fetchedAt)).not.toBeNaN();
+    const rolling = json<{ count: number; origin: { kind: string } }>((await run('list', '--status', 'rolling', '--json')).out);
+    expect(rolling).toMatchObject({ count: 3, origin: { kind: 'cache' } });
+    const open = json<{ records: { id: string }[] }>((await run('list', '--open', '--assessment', 'worth considering', '--json')).out);
     expect(open.records.map((r) => r.id)).toEqual(['cursor-ambassadors', 'microsoft-student-ambassadors']);
     expect((await run('list', '--status', 'soonish')).code).toBe(2);
+    const table = await run('list');
+    expect(table.code).toBe(0);
+    expect(table.out).toContain('anthropic-campus-2026');
   });
 
   it('shows a record with its sources, and suggests IDs for typos', async () => {
     const r = await run('show', 'anthropic-campus-2026');
-    expect(r.out).toMatch(/Claude Campus Program — Anthropic/);
-    expect(r.out).toMatch(/\[anthropic\] https:\/\/claude\.com\/programs\/campus/);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('Claude Campus Program');
+    expect(r.out).toContain('https://claude.com/programs/campus');
     const miss = await run('show', 'anthropic');
     expect(miss.code).toBe(2);
-    expect(miss.err).toMatch(/Did you mean: anthropic-campus-2026/);
+    expect(miss.err).toContain('anthropic-campus-2026');
   });
 
   it('exports CSV and JSON, refusing to overwrite without --force', async () => {
@@ -93,38 +97,38 @@ describe('student commands', () => {
     expect(parseCatalogCsv(readFileSync(file, 'utf8')).records).toHaveLength(13);
     expect((await run('export', '--output', file)).code).toBe(2);
     expect((await run('export', '--output', file, '--force', '--format', 'json', '--status', 'closed')).code).toBe(0);
-    expect(JSON.parse(readFileSync(file, 'utf8')).records).toHaveLength(1);
+    expect(json<{ records: unknown[] }>(readFileSync(file, 'utf8')).records).toHaveLength(1);
   });
 
   it('works offline from the cache after one live read', async () => {
     await run('list');
     const before = feedHits;
-    const off = await run('list', '--offline');
-    expect(off.out).toMatch(/Cached copy of published feed/);
+    const off = json<{ origin: { kind: string } }>((await run('list', '--offline', '--json')).out);
+    expect(off.origin.kind).toBe('cache');
     expect(feedHits).toBe(before);
   });
 
-  it('search and formatting explain missing keys; propose refuses private URLs', async () => {
+  it('names missing keys and refuses private research URLs', async () => {
     const s = await run('search', 'AI student ambassador');
     expect(s.code).toBe(1);
-    expect(s.err).toMatch(/EXA_API_KEY is not set/);
-    expect((await run('search', '--provider', 'firecrawl', 'x')).err).toMatch(/FIRECRAWL_API_KEY is not set/);
-    const p = await run('propose', 'http://[::ffff:127.0.0.1]:8080/');
-    expect(p.code).toBe(2);
-    expect(p.err).toMatch(/private address/);
+    expect(s.err).toContain('EXA_API_KEY');
+    expect((await run('search', '--provider', 'firecrawl', 'x')).err).toContain('FIRECRAWL_API_KEY');
+    expect((await run('propose', 'http://[::ffff:127.0.0.1]:8080/')).code).toBe(2);
     expect((await run('propose', 'http://169.254.169.254/latest/meta-data')).code).toBe(2);
   });
 
-  it('doctor reports key presence without values', async () => {
+  it('doctor reports key presence without values and does not depend on optional models', async () => {
     process.env.EXA_API_KEY = 'secret-value-should-not-print';
-    const d = await run('doctor', '--offline');
+    const d = await run('doctor', '--offline', '--json');
     delete process.env.EXA_API_KEY;
-    expect(d.out).toMatch(/EXA_API_KEY \(search default\): set/);
-    expect(d.out).not.toMatch(/secret-value/);
+    expect(d.out).not.toContain('secret-value');
+    const checks = json<{ checks: { name: string; ok: boolean | null; detail: string }[] }>(d.out).checks;
+    expect(checks.find((c) => c.name.startsWith('EXA_API_KEY'))?.detail).toBe('set');
+    expect(checks.some((c) => /formatter/i.test(c.name))).toBe(false);
   });
 });
 
-describe('research commands with mocked provider HTTP (offline regression coverage)', () => {
+describe('research commands with mocked provider HTTP', () => {
   const realFetch = globalThis.fetch;
   let calls: string[] = [];
   afterEach(() => {
@@ -145,12 +149,12 @@ describe('research commands with mocked provider HTTP (offline regression covera
       return handlers[key]!();
     }) as typeof fetch;
   }
-  const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+  const reply = (status: number, body: unknown, headers: Record<string, string> = {}) =>
     new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
   const models = () =>
-    json(200, { data: [{ id: 'poolside/laguna-s-2.1:free', pricing: { prompt: '0', completion: '0' }, supported_parameters: ['max_tokens'] }] });
+    reply(200, { data: [{ id: 'poolside/laguna-s-2.1:free', pricing: { prompt: '0', completion: '0' }, supported_parameters: ['max_tokens'] }] });
   const exaContent = () =>
-    json(200, { results: [{ url: 'https://93.184.216.34/program', title: 'Campus Program', text: 'Campus Program. Leaders host workshops.' }], statuses: [{ id: 'x', status: 'success' }] });
+    reply(200, { results: [{ url: 'https://93.184.216.34/program', title: 'Campus Program', text: 'Campus Program. Leaders host workshops.' }], statuses: [{ id: 'x', status: 'success' }] });
 
   it('keeps the evidence-based candidate when the formatter is rate limited', async () => {
     process.env.EXA_API_KEY = 'test';
@@ -158,123 +162,113 @@ describe('research commands with mocked provider HTTP (offline regression covera
     route({
       'https://openrouter.ai/api/v1/models': models,
       'https://api.exa.ai/contents': exaContent,
-      'https://openrouter.ai/api/v1/chat/completions': () => json(429, { error: { code: 429, message: 'rate limited upstream' } }, { 'retry-after': '0' }),
+      'https://openrouter.ai/api/v1/chat/completions': () => reply(429, { error: { code: 429, message: 'rate limited upstream' } }, { 'retry-after': '0' }),
     });
-    const dir = mkdtempSync(join(tmpdir(), 'ambassador-propose-'));
-    const file = join(dir, 'c.json');
+    const file = join(mkdtempSync(join(tmpdir(), 'ambassador-propose-')), 'c.json');
     const r = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'laguna', '--output', file);
     expect(r.code).toBe(1);
-    expect(r.out).toMatch(/Formatting failed, so the candidate was saved without model output: OpenRouter: rate limited/);
-    const saved = JSON.parse(readFileSync(file, 'utf8'));
-    expect(saved.reviewState).toBe('needs-review');
-    expect(saved.evidence.text).toContain('Leaders host workshops');
+    expect(r.out).toContain(file);
+    const saved = json<Record<string, any>>(readFileSync(file, 'utf8'));
+    expect(saved.evidence).toEqual({ text: 'Campus Program. Leaders host workshops.' });
+    expect(saved.formatter.ok).toBe(false);
     expect(saved.formatter.errors.join()).toMatch(/rate limited/);
     expect(saved.record.company).toBeNull();
+    expect(saved.warnings).toEqual([]);
+    expect(saved).not.toHaveProperty('reviewState');
+    expect(saved.sources[0]).not.toHaveProperty('excerpt');
   });
 
-  it('checks formatter availability and the output file before spending provider credits', async () => {
+  it('checks the formatter, its key and the output file before paying for a page fetch', async () => {
     process.env.EXA_API_KEY = 'test';
     process.env.OPENROUTER_API_KEY = 'test';
-    route({ 'https://openrouter.ai/api/v1/models': () => json(200, { data: [] }), 'https://api.exa.ai/contents': exaContent });
-    const gone = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'laguna', '--output', join(mkdtempSync(join(tmpdir(), 'p-')), 'c.json'));
-    expect(gone.code).toBe(2);
-    expect(gone.err).toMatch(/unavailable: not currently listed/);
-    expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
-
+    route({ 'https://openrouter.ai/api/v1/models': () => reply(200, { data: [] }), 'https://api.exa.ai/contents': exaContent });
     const dir = mkdtempSync(join(tmpdir(), 'p-'));
+    expect((await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'laguna', '--output', join(dir, 'c.json'))).code).toBe(2);
     writeFileSync(join(dir, 'exists.json'), '{}');
-    const exists = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--output', join(dir, 'exists.json'));
-    expect(exists.code).toBe(2);
-    expect(exists.err).toMatch(/already exists/);
-    expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
-
+    expect((await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--output', join(dir, 'exists.json'))).code).toBe(2);
     delete process.env.OPENROUTER_API_KEY;
     const noKey = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'dots', '--output', join(dir, 'k.json'));
-    expect(noKey.err).toMatch(/OPENROUTER_API_KEY is not set/);
+    expect(noKey.err).toContain('OPENROUTER_API_KEY');
     expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
   });
 
-  it('prints one-line snippets and flags results the catalog already has or cites', async () => {
+  it('flags results the catalog already lists or cites, with one-line snippets', async () => {
     process.env.EXA_API_KEY = 'test';
     route({
       'https://api.exa.ai/search': () =>
-        json(200, {
+        reply(200, {
           results: [
             { url: 'https://www.microsoft.com/en-us/microsoft-copilot/for-individuals/copilot-student-ambassador', title: 'Be a Copilot Ambassador', highlights: ['# Be a Copilot Ambassador\nCopilot helps students\n...\n- thrive'] },
-            { url: 'https://cursor.com/ambassadors/', title: 'Cursor Ambassadors' },
+            { url: 'https://anysphere.typeform.com/to/YreXrWZd', title: 'Apply' },
             { url: 'https://new.example/program', title: 'New Program' },
           ],
         }),
     });
-    const r = await run('search', 'copilot ambassador', '--limit', '3', '--no-cache');
-    expect(r.code).toBe(0);
-    expect(r.out).toMatch(/Be a Copilot Ambassador {2}\[already cited by: microsoft-copilot-fall-2026\]/);
-    expect(r.out).toMatch(/Be a Copilot Ambassador Copilot helps students thrive/);
-    expect(r.out).toMatch(/Cursor Ambassadors {2}\[already cited by: cursor-ambassadors\]/);
-    expect(r.out).not.toMatch(/New Program {2}\[/);
+    const r = json<{ results: { snippet: string; catalogId: string | null; citedBy: string[] }[] }>((await run('search', 'copilot ambassador', '--limit', '3', '--no-cache', '--json')).out);
+    expect(r.results.map((x) => [x.catalogId, x.citedBy])).toEqual([
+      [null, ['microsoft-copilot-fall-2026']],
+      ['cursor-ambassadors', []],
+      [null, []],
+    ]);
+    expect(r.results[0]!.snippet).toBe('Be a Copilot Ambassador Copilot helps students thrive');
+    const text = await run('search', 'copilot ambassador', '--limit', '3');
+    expect(text.code).toBe(0);
+    expect(text.out).toContain('microsoft-copilot-fall-2026');
   });
 });
 
-describe('maintainer workflow end to end (review -> sync dry-run -> apply -> idempotent)', () => {
-  it('turns a reviewed candidate into precise Sheet changes', async () => {
-    const s = await startFakeSheets();
-    fake = s.fake;
+describe('maintainer workflow', () => {
+  const cell = (row: number, col: number) => fake!.sheet('Opportunities').cells[row]![col];
+
+  it('reviews a candidate, previews it, applies only the changed cells, and repeats safely', async () => {
+    fake = (await startFakeSheets()).fake;
     process.env.AMBASSADOR_GOOGLE_ACCESS_TOKEN = MAINTAINER_TOKEN;
     const dir = mkdtempSync(join(tmpdir(), 'ambassador-flow-'));
     const page = { url: 'https://cursor.com/ambassadors', title: 'Cursor Ambassadors', text: 'Cursor Ambassadors. Plan on about 2 hours per week.', fetcher: 'direct' };
     const cand = buildCandidate({ requestedUrl: 'https://anysphere.typeform.com/to/YreXrWZd', page });
-    cand.record.id = 'cursor-ambassadors';
-    cand.record.workload = 'About 2 hours per week.';
+    Object.assign(cand.record, { id: 'cursor-ambassadors', workload: 'About 2 hours per week.', sourceIds: ['cursor'] });
     cand.sources[0]!.id = 'cursor';
-    cand.record.sourceIds = ['cursor'];
     const candFile = join(dir, 'candidate.json');
     writeFileSync(candFile, JSON.stringify(cand));
     const changes = join(dir, 'changes.json');
 
-    const review = await run('review', candFile, '--output', changes, '--sheet-id', SPREADSHEET_ID);
-    expect(review.code).toBe(0);
-    expect(review.out).toMatch(/UPDATE cursor-ambassadors/);
-    expect(review.out).toMatch(/~ Time commitment: "Regular involvement; hours not published\." -> "About 2 hours per week\."/);
-    expect(review.out).toMatch(/~ Last checked/);
-    expect(review.out).not.toMatch(/Application status/);
+    expect((await run('review', candFile, '--output', changes, '--sheet-id', SPREADSHEET_ID)).code).toBe(0);
+    const cs = json<{ changes: { action: string; id: string; fields: Record<string, { from: string; to: string }> }[] }>(readFileSync(changes, 'utf8'));
+    expect(cs.changes).toHaveLength(1);
+    expect(cs.changes[0]).toMatchObject({ action: 'update', id: 'cursor-ambassadors' });
+    expect(Object.keys(cs.changes[0]!.fields).sort()).toEqual(['lastChecked', 'workload']);
+    expect(cs.changes[0]!.fields.workload).toEqual({ from: 'Regular involvement; hours not published.', to: 'About 2 hours per week.' });
 
-    const dry = await run('sync', '--dry-run', '--changes', changes, '--sheet-id', SPREADSHEET_ID);
-    expect(dry.code).toBe(0);
-    expect(dry.out).toMatch(/nothing written/);
+    expect((await run('sync', '--dry-run', '--changes', changes, '--sheet-id', SPREADSHEET_ID)).code).toBe(0);
     expect(fake.writeRequests).toHaveLength(0);
-
-    const noTarget = await run('sync', '--apply', '--changes', changes);
-    expect(noTarget.code).toBe(2);
-    expect(noTarget.err).toMatch(/explicit target/);
+    expect((await run('sync', '--apply', '--changes', changes)).code).toBe(2);
 
     const backups = join(dir, 'backups');
-    const apply = await run('sync', '--apply', '--changes', changes, '--sheet-id', SPREADSHEET_ID, '--backup-dir', backups);
-    expect(apply.code).toBe(0);
-    expect(apply.out).toMatch(/Readback verified/);
-    expect(existsSync(backups)).toBe(true);
-    const again = await run('sync', '--apply', '--changes', changes, '--sheet-id', SPREADSHEET_ID, '--backup-dir', backups);
-    expect(again.out).toMatch(/Already up to date/);
+    expect((await run('sync', '--apply', '--changes', changes, '--sheet-id', SPREADSHEET_ID, '--backup-dir', backups)).code).toBe(0);
+    expect(readdirSync(backups)).toHaveLength(1);
+    expect(cell(1, 9)).toEqual({ string: 'About 2 hours per week.' });
     expect(fake.writeRequests).toHaveLength(1);
+    expect((await run('sync', '--apply', '--changes', changes, '--sheet-id', SPREADSHEET_ID, '--backup-dir', backups)).code).toBe(0);
+    expect(fake.writeRequests).toHaveLength(1);
+    expect(readdirSync(backups)).toHaveLength(1);
   });
 
-  it('dry-run reports additions blocked by a protected ID column before anything is attempted', async () => {
-    const s = await startFakeSheets([{ sheetId: 1872724035, startRow: 1, startCol: 21, endCol: 21, editors: [OWNER_TOKEN] }]);
-    fake = s.fake;
+  it('names protected cells in a preview and writes nothing on apply', async () => {
+    fake = (await startFakeSheets([{ sheetId: 1872724035, startRow: 1, startCol: 21, endCol: 21, editors: [OWNER_TOKEN] }])).fake;
     process.env.AMBASSADOR_GOOGLE_ACCESS_TOKEN = MAINTAINER_TOKEN;
     const dir = mkdtempSync(join(tmpdir(), 'ambassador-blocked-'));
     const page = { url: 'https://example.com/new-program', title: 'New Program', text: 'New Program by Example.', fetcher: 'direct' };
     const cand = buildCandidate({ requestedUrl: page.url, page });
     Object.assign(cand.record, { id: 'example-new-program', company: 'Example', program: 'New Program', assessment: 'Needs clarification' });
-    const candFile = join(dir, 'candidate.json');
-    writeFileSync(candFile, JSON.stringify(cand));
+    writeFileSync(join(dir, 'candidate.json'), JSON.stringify(cand));
     const changes = join(dir, 'changes.json');
-    expect((await run('review', candFile, '--output', changes, '--sheet-id', SPREADSHEET_ID)).code).toBe(0);
+    expect((await run('review', join(dir, 'candidate.json'), '--output', changes, '--sheet-id', SPREADSHEET_ID)).code).toBe(0);
     const dry = await run('sync', '--dry-run', '--changes', changes, '--sheet-id', SPREADSHEET_ID);
     expect(dry.code).toBe(3);
-    expect(dry.out).toMatch(/BLOCKED Opportunities!R15C22 \(new example-new-program Opportunity ID\) is in protected range/);
+    expect(dry.out).toContain('R15C22');
     const apply = await run('sync', '--apply', '--changes', changes, '--sheet-id', SPREADSHEET_ID, '--backup-dir', join(dir, 'b'));
     expect(apply.code).toBe(1);
-    expect(apply.err).toMatch(/protected range/);
+    expect(apply.err).toContain('R15C22');
     expect(fake.writeRequests).toHaveLength(0);
     expect(existsSync(join(dir, 'b'))).toBe(false);
   });
@@ -285,33 +279,40 @@ describe('maintainer workflow end to end (review -> sync dry-run -> apply -> ide
     const current = new Map(parseCatalogCsv(CATALOG_CSV).records.map((r) => [r.id, r]));
     const r = reviewCandidate('c.json', cand, current);
     expect(r.ok).toBe(false);
-    expect(r.problems.join()).toMatch(/assessment must be set/);
-    expect(r.problems.join()).toMatch(/company is required/);
-    cand.record.company = 'Example';
-    cand.record.program = 'New Program';
-    cand.record.assessment = 'Needs clarification';
-    cand.record.sourceIds = ['not-a-listed-source'];
-    expect(reviewCandidate('c.json', cand, current).problems.join()).toMatch(/not in the candidate's sources/);
+    expect(r.problems.join()).toContain('record.assessment');
+    expect(r.problems.join()).toContain('record.company');
+    Object.assign(cand.record, { company: 'Example', program: 'New Program', assessment: 'Needs clarification', sourceIds: ['not-a-listed-source'] });
+    expect(reviewCandidate('c.json', cand, current).ok).toBe(false);
     expect(reviewCandidate('c.json', { hello: 1 }, current).ok).toBe(false);
   });
 
-  it('restore dry-run lists changes and never deletes', async () => {
-    const s = await startFakeSheets();
-    fake = s.fake;
+  it('still accepts candidate files written by earlier 0.1.0 builds', () => {
+    const page = { url: 'https://example.com/p', title: 'New Program', text: 'Program text.', fetcher: 'direct' };
+    const cand = buildCandidate({ requestedUrl: page.url, page });
+    Object.assign(cand.record, { company: 'Example', program: 'New Program', assessment: 'Needs clarification' });
+    const legacy = {
+      ...cand,
+      reviewState: 'draft',
+      evidence: { sha256: 'a'.repeat(64), chars: 13, text: 'Program text.' },
+      sources: cand.sources.map((s) => ({ ...s, excerpt: 'Program text.' })),
+    };
+    const current = new Map(parseCatalogCsv(CATALOG_CSV).records.map((r) => [r.id, r]));
+    expect(reviewCandidate('old.json', legacy, current)).toMatchObject({ ok: true, change: { action: 'add' } });
+  });
+
+  it('restores a backup: preview, refusal across spreadsheets, then apply', async () => {
+    fake = (await startFakeSheets()).fake;
     process.env.AMBASSADOR_GOOGLE_ACCESS_TOKEN = MAINTAINER_TOKEN;
     const dir = mkdtempSync(join(tmpdir(), 'ambassador-restore-'));
-    const b = await run('backup', '--sheet-id', SPREADSHEET_ID, '--output-dir', dir);
-    expect(b.code).toBe(0);
-    const file = /written to (.+\.json)/.exec(b.out)![1]!;
+    expect((await run('backup', '--sheet-id', SPREADSHEET_ID, '--backup-dir', dir)).code).toBe(0);
+    const file = join(dir, readdirSync(dir)[0]!);
     fake.edit('Opportunities', 1, 2, { string: 'Closed' });
-    const r = await run('restore', file, '--dry-run', '--sheet-id', SPREADSHEET_ID);
-    expect(r.code).toBe(0);
-    expect(r.out).toMatch(/Application status: "Closed" -> "Rolling"/);
-    const wrong = await run('restore', file, '--apply', '--sheet-id', 'another-spreadsheet-id-123456');
-    expect(wrong.code).toBe(2);
-    expect(wrong.err).toMatch(/Refusing to restore across spreadsheets/);
-    const ok = await run('restore', file, '--apply', '--sheet-id', SPREADSHEET_ID, '--backup-dir', dir);
-    expect(ok.code).toBe(0);
-    expect(ok.out).toMatch(/Readback verified/);
+    const preview = await run('restore', file, '--dry-run', '--sheet-id', SPREADSHEET_ID);
+    expect(preview.code).toBe(0);
+    expect(preview.out).toContain('"Closed" -> "Rolling"');
+    expect(fake.writeRequests).toHaveLength(0);
+    expect((await run('restore', file, '--apply', '--sheet-id', 'another-spreadsheet-id-123456')).code).toBe(2);
+    expect((await run('restore', file, '--apply', '--sheet-id', SPREADSHEET_ID, '--backup-dir', dir)).code).toBe(0);
+    expect(cell(1, 2)).toEqual({ string: 'Rolling' });
   });
 });

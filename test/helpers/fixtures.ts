@@ -25,6 +25,6 @@ export async function startFakeSheets(protections: Protection[] = []): Promise<{
     ],
   });
   process.env.AMBASSADOR_SHEETS_API_BASE = await fake.start();
-  const client = new SheetsClient(SPREADSHEET_ID, { principal: 'test-maintainer', getToken: async () => MAINTAINER_TOKEN, warnings: [] });
+  const client = new SheetsClient(SPREADSHEET_ID, { principal: 'test-maintainer', getToken: async () => MAINTAINER_TOKEN });
   return { fake, client };
 }

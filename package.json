@@ -1,7 +1,7 @@
 {
   "name": "ai-ambassador-opportunities",
   "version": "0.1.0",
-  "description": "Browse, research and propose student AI/developer-tool ambassador programs from a public Google Sheet catalog.",
+  "description": "Browse and research student ambassador programs from a public Google Sheet.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -11,7 +11,8 @@
     "dist",
     "data/catalog-snapshot.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "MAINTAINING.md"
   ],
   "engines": {
     "node": ">=22"

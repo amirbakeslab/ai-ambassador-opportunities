@@ -6,7 +6,7 @@ import { parseJson, request, type RequestBudget } from '../http.js';
 const API = 'https://openrouter.ai/api/v1';
 
 /** Native formatter choices. Both are OpenRouter free variants; paid variants are never substituted. */
-export const FORMATTERS: Record<string, string> = {
+const FORMATTERS: Record<string, string> = {
   dots: 'dots-studio/dots-3-note-preview:free',
   laguna: 'poolside/laguna-s-2.1:free',
 };
@@ -31,7 +31,7 @@ const ModelEntry = z.object({
  * Free only if a prompt price is listed and every price component is zero.
  * Structured components (for example pricing overrides) must be empty.
  */
-export function isFreePricing(pricing: Record<string, unknown>): boolean {
+function isFreePricing(pricing: Record<string, unknown>): boolean {
   if (pricing.prompt === undefined) return false;
   return Object.values(pricing).every((v) => {
     if (v === null || v === undefined) return true;
@@ -41,7 +41,7 @@ export function isFreePricing(pricing: Record<string, unknown>): boolean {
   });
 }
 
-export interface ModelAvailability {
+interface ModelAvailability {
   id: string;
   available: boolean;
   free: boolean;
@@ -87,10 +87,10 @@ export const FORMATTABLE_FIELDS = [
   'geography',
   'restrictions',
 ] as const;
-export type FormattableField = (typeof FORMATTABLE_FIELDS)[number];
+type FormattableField = (typeof FORMATTABLE_FIELDS)[number];
 
 const nullableText = z.string().max(2000).nullable();
-export const FormatterOutputSchema = z
+const FormatterOutputSchema = z
   .object(Object.fromEntries(FORMATTABLE_FIELDS.map((f) => [f, nullableText])) as Record<FormattableField, typeof nullableText>)
   .strict();
 export type FormatterOutput = z.infer<typeof FormatterOutputSchema>;
@@ -128,7 +128,7 @@ export function extractJsonObject(text: string): unknown {
 }
 
 const ChatResponse = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string().nullish() }).nullish(), finish_reason: z.string().nullish() })).min(1),
+  choices: z.array(z.object({ message: z.object({ content: z.string().nullish() }).nullish() })).min(1),
 });
 const ErrorBody = z.object({ error: z.object({ code: z.union([z.number(), z.string()]).optional(), message: z.string().optional() }) });
 
@@ -166,8 +166,8 @@ export async function formatEvidence(
   const json = parseJson(res.text);
   const err = ErrorBody.safeParse(json);
   if (res.status === 402) throw new QuotaError('OpenRouter', err.success ? err.data.error.message ?? 'payment required' : 'payment required');
-  if (res.status === 401) throw new ProviderError('OpenRouter', 'API key was rejected (401). Check OPENROUTER_API_KEY.', 401);
-  if (res.status !== 200) throw new ProviderError('OpenRouter', err.success ? err.data.error.message ?? `HTTP ${res.status}` : `HTTP ${res.status}`, res.status);
+  if (res.status === 401) throw new ProviderError('OpenRouter', 'API key was rejected (401). Check OPENROUTER_API_KEY.');
+  if (res.status !== 200) throw new ProviderError('OpenRouter', err.success ? err.data.error.message ?? `HTTP ${res.status}` : `HTTP ${res.status}`);
   if (err.success) throw new ProviderError('OpenRouter', `model error: ${err.data.error.message ?? String(err.data.error.code)}`);
   const chat = ChatResponse.safeParse(json);
   if (!chat.success) return { model: input.model, output: null, raw: res.text.slice(0, 4000), errors: ['response did not contain a chat completion'] };

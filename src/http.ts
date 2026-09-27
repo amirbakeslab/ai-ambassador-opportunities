@@ -15,9 +15,8 @@ export class RequestBudget {
   }
 }
 
-export interface RequestOptions {
+interface RequestOptions {
   provider: string;
-  method?: string;
   headers?: Record<string, string>;
   /** JSON-encoded request body. */
   body?: unknown;
@@ -31,7 +30,6 @@ export interface RequestOptions {
   budget?: RequestBudget;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
-  redirect?: 'follow' | 'manual' | 'error';
   /** HTTP statuses that are retried. Default 429, 502, 503, 504. */
   retryStatuses?: number[];
   /** Retry after connection failures (default true). Disable for non-idempotent writes. */
@@ -40,10 +38,10 @@ export interface RequestOptions {
   maxBytes?: number;
 }
 
-export const DEFAULT_MAX_RESPONSE_BYTES = 10_000_000;
+const DEFAULT_MAX_RESPONSE_BYTES = 10_000_000;
 
 /** Read a response body as text, aborting once more than maxBytes have arrived. */
-export async function readBounded(res: Response, maxBytes: number, provider: string): Promise<string> {
+async function readBounded(res: Response, maxBytes: number, provider: string): Promise<string> {
   const declared = Number(res.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) {
     await res.body?.cancel().catch(() => undefined);
@@ -74,9 +72,7 @@ export async function readBounded(res: Response, maxBytes: number, provider: str
 
 export interface HttpResult {
   status: number;
-  headers: Headers;
   text: string;
-  url: string;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -107,7 +103,7 @@ export async function request(url: string, opts: RequestOptions): Promise<HttpRe
     try {
       const hasJson = opts.body !== undefined;
       res = await f(url, {
-        method: opts.method ?? (hasJson || opts.rawBody !== undefined ? 'POST' : 'GET'),
+        method: hasJson || opts.rawBody !== undefined ? 'POST' : 'GET',
         headers: {
           'user-agent': USER_AGENT,
           ...(hasJson ? { 'content-type': 'application/json' } : {}),
@@ -115,7 +111,6 @@ export async function request(url: string, opts: RequestOptions): Promise<HttpRe
         },
         body: hasJson ? JSON.stringify(opts.body) : opts.rawBody,
         signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
-        redirect: opts.redirect ?? 'follow',
       });
     } catch (err) {
       if (attempt < retries && opts.retryNetworkErrors !== false) {
@@ -139,7 +134,7 @@ export async function request(url: string, opts: RequestOptions): Promise<HttpRe
         throw new RateLimitError(opts.provider, after);
       }
     }
-    return { status: res.status, headers: res.headers, text: await readBounded(res, opts.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES, opts.provider), url: res.url || url };
+    return { status: res.status, text: await readBounded(res, opts.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES, opts.provider) };
   }
 }
 

@@ -95,7 +95,7 @@ export function loadSnapshot() {
 function snapshotTable(snapshot) {
     const rowById = new Map();
     snapshot.records.forEach((r, i) => rowById.set(r.id, i + 2));
-    return { records: snapshot.records, rowById, issues: [], columnIndex: {}, header: [], extraHeaders: [] };
+    return { records: snapshot.records, rowById, issues: [], columnIndex: {}, header: [] };
 }
 /**
  * Load the public catalog. Live feed first (unless offline or a fresh cache
@@ -120,7 +120,7 @@ export async function loadCatalog(opts = {}) {
             const text = await fetchCatalogCsv(url, opts.fetchImpl);
             const table = parseCatalogCsv(text);
             const fetchedAt = now().toISOString();
-            await writeCache(dir, text, { url, fetchedAt, sha256: createHash('sha256').update(text).digest('hex'), records: table.records.length }).catch(() => undefined);
+            await writeCache(dir, text, { url, fetchedAt, sha256: createHash('sha256').update(text).digest('hex') }).catch(() => undefined);
             return { table, origin: { kind: 'live', url, fetchedAt } };
         }
         catch (e) {

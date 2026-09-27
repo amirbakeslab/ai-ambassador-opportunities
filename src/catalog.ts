@@ -10,9 +10,9 @@ import { request } from './http.js';
 import { parseCatalogCsv, type ParsedTable } from './records.js';
 import { OpportunitySchema, type Opportunity } from './schema.js';
 
-export type CatalogOriginKind = 'live' | 'cache' | 'snapshot';
+type CatalogOriginKind = 'live' | 'cache' | 'snapshot';
 
-export interface CatalogOrigin {
+interface CatalogOrigin {
   kind: CatalogOriginKind;
   url: string;
   /** When this copy was downloaded from the published feed (ISO timestamp). */
@@ -25,7 +25,7 @@ export interface LoadedCatalog {
   origin: CatalogOrigin;
 }
 
-export interface LoadOptions {
+interface LoadOptions {
   /** offline: cache or bundled snapshot only. refresh: always fetch live. */
   mode?: 'auto' | 'offline' | 'refresh';
   /** In auto mode, reuse a cache younger than this. */
@@ -38,7 +38,6 @@ interface CacheMeta {
   url: string;
   fetchedAt: string;
   sha256: string;
-  records: number;
 }
 
 const META = 'catalog.meta.json';
@@ -130,7 +129,7 @@ export function loadSnapshot(): Snapshot {
 function snapshotTable(snapshot: Snapshot): ParsedTable {
   const rowById = new Map<string, number>();
   snapshot.records.forEach((r, i) => rowById.set(r.id, i + 2));
-  return { records: snapshot.records, rowById, issues: [], columnIndex: {} as ParsedTable['columnIndex'], header: [], extraHeaders: [] };
+  return { records: snapshot.records, rowById, issues: [], columnIndex: {} as ParsedTable['columnIndex'], header: [] };
 }
 
 /**
@@ -158,9 +157,7 @@ export async function loadCatalog(opts: LoadOptions = {}): Promise<LoadedCatalog
       const text = await fetchCatalogCsv(url, opts.fetchImpl);
       const table = parseCatalogCsv(text);
       const fetchedAt = now().toISOString();
-      await writeCache(dir, text, { url, fetchedAt, sha256: createHash('sha256').update(text).digest('hex'), records: table.records.length }).catch(
-        () => undefined,
-      );
+      await writeCache(dir, text, { url, fetchedAt, sha256: createHash('sha256').update(text).digest('hex') }).catch(() => undefined);
       return { table, origin: { kind: 'live', url, fetchedAt } };
     } catch (e) {
       if (mode === 'refresh') throw e;

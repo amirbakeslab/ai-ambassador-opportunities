@@ -1,6 +1,4 @@
-import { createHash } from 'node:crypto';
 import { TOOL_NAME, TOOL_VERSION } from './config.js';
-import { todayIso } from './dates.js';
 import { FORMATTABLE_FIELDS } from './formatters/openrouter.js';
 import { cleanText } from './safety.js';
 import { CandidateSchema } from './schema.js';
@@ -55,12 +53,14 @@ export function groundingScore(value, evidence) {
     const hits = vw.filter((w) => ev.has(w) || evStems.has(stem(w))).length;
     return hits / vw.length;
 }
-export const GROUNDING_THRESHOLD = 0.6;
+const GROUNDING_THRESHOLD = 0.6;
 /**
- * Keep only formatter values that are traceable to the evidence. Unsupported
- * values revert to null (unknown) with a warning; nothing is invented.
+ * Filter formatter values by word overlap with the evidence (and exact date
+ * forms for deadlines). Values that fail revert to null (unknown) with a
+ * warning. This catches unsupported text but does not prove a claim is right;
+ * a person still checks every value against the source.
  */
-export function applyFormatterOutput(record, output, evidence) {
+function applyFormatterOutput(record, output, evidence) {
     const filled = [];
     const warnings = [];
     for (const field of FORMATTABLE_FIELDS) {
@@ -118,11 +118,9 @@ export function buildCandidate(input) {
         assessment: null,
         assessmentReason: null,
         sourceIds: [sourceId],
-        lastChecked: todayIso(now),
+        lastChecked: now.toISOString().slice(0, 10),
     };
-    const warnings = [
-        'Status and assessment are unset until a maintainer reviews the sources; new entries default to "Needs verification".',
-    ];
+    const warnings = [];
     let formatter = null;
     if (input.format) {
         const f = input.format;
@@ -132,9 +130,6 @@ export function buildCandidate(input) {
             const applied = applyFormatterOutput(record, f.output, evidence);
             filled = applied.filled;
             warnings.push(...applied.warnings);
-        }
-        else {
-            warnings.push(`formatter gave no usable output; fields left unknown (${errors.join('; ')})`);
         }
         formatter = { model: f.model, ok: errors.length === 0, filledFields: filled, errors, raw: f.raw };
         if (record.company && record.program) {
@@ -147,7 +142,6 @@ export function buildCandidate(input) {
         schema: 'ai-ambassador-opportunities/candidate@1',
         createdAt: now.toISOString(),
         tool: { name: TOOL_NAME, version: TOOL_VERSION },
-        reviewState: formatter && !formatter.ok ? 'needs-review' : 'draft',
         record,
         sources: [
             {
@@ -156,10 +150,9 @@ export function buildCandidate(input) {
                 title,
                 retrievedAt: now.toISOString(),
                 fetcher: input.page.fetcher,
-                excerpt: evidence.slice(0, 600),
             },
         ],
-        evidence: { sha256: createHash('sha256').update(evidence).digest('hex'), chars: evidence.length, text: evidence },
+        evidence: { text: evidence },
         formatter,
         warnings,
     };

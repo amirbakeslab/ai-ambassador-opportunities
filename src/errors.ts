@@ -17,7 +17,7 @@ export class UsageError extends CliError {
 }
 
 export class MissingKeyError extends CliError {
-  constructor(readonly envVar: string, purpose: string) {
+  constructor(envVar: string, purpose: string) {
     super(`${envVar} is not set. ${purpose} Set it in your own shell environment; browsing the catalog does not need it.`);
     this.name = 'MissingKeyError';
   }
@@ -32,7 +32,7 @@ export class QuotaError extends CliError {
 }
 
 export class RateLimitError extends CliError {
-  constructor(provider: string, readonly retryAfterSeconds: number | null) {
+  constructor(provider: string, retryAfterSeconds: number | null) {
     super(
       `${provider}: rate limited${retryAfterSeconds !== null ? ` (retry after ${retryAfterSeconds}s)` : ''}. Wait and try again later.`,
     );
@@ -41,7 +41,7 @@ export class RateLimitError extends CliError {
 }
 
 export class ProviderError extends CliError {
-  constructor(provider: string, detail: string, readonly status?: number) {
+  constructor(provider: string, detail: string) {
     super(`${provider}: ${detail}`);
     this.name = 'ProviderError';
   }

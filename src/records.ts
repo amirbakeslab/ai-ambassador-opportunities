@@ -7,7 +7,7 @@ import { neutralizeFormula } from './safety.js';
 
 export type Cell = string | number | boolean | null | undefined;
 
-export interface RowIssue {
+interface RowIssue {
   /** 1-based sheet row number (header is row 1). */
   row: number;
   id: string | null;
@@ -22,26 +22,22 @@ export interface ParsedTable {
   /** Column index for each field key in the source header. */
   columnIndex: Record<FieldKey, number>;
   header: string[];
-  extraHeaders: string[];
 }
 
-export class CatalogFormatError extends CliError {}
-
-export function mapHeader(header: string[]): { columnIndex: Record<FieldKey, number>; extraHeaders: string[] } {
-  const normalized = header.map((h) => h.trim().replace(/^﻿/, ''));
+function mapHeader(header: string[]): Record<FieldKey, number> {
+  const normalized = header.map((h) => h.trim().replace(/^\uFEFF/, ''));
   const columnIndex = {} as Record<FieldKey, number>;
   const missing: string[] = [];
   for (const c of COLUMNS) {
     const i = normalized.indexOf(c.header);
     if (i === -1) missing.push(c.header);
-    else if (normalized.indexOf(c.header, i + 1) !== -1) throw new CatalogFormatError(`Catalog header "${c.header}" appears more than once.`);
+    else if (normalized.indexOf(c.header, i + 1) !== -1) throw new CliError(`Catalog header "${c.header}" appears more than once.`);
     else columnIndex[c.key] = i;
   }
   if (missing.length) {
-    throw new CatalogFormatError(`Catalog is missing expected column(s): ${missing.join(', ')}. The published format may have changed.`);
+    throw new CliError(`Catalog is missing expected column(s): ${missing.join(', ')}. The published format may have changed.`);
   }
-  const known = new Set<string>(COLUMNS.map((c) => c.header));
-  return { columnIndex, extraHeaders: normalized.filter((h) => h && !known.has(h)) };
+  return columnIndex;
 }
 
 function cellText(v: Cell): string {
@@ -50,7 +46,7 @@ function cellText(v: Cell): string {
 }
 
 /** Convert one raw row into a validated record, or a list of problems. */
-export function rowToRecord(row: Cell[], columnIndex: Record<FieldKey, number>): { record?: Opportunity; problems: string[]; id: string | null } {
+function rowToRecord(row: Cell[], columnIndex: Record<FieldKey, number>): { record?: Opportunity; problems: string[]; id: string | null } {
   const problems: string[] = [];
   const draft: Record<string, unknown> = {};
   for (const key of FIELD_KEYS) {
@@ -81,9 +77,9 @@ export function rowToRecord(row: Cell[], columnIndex: Record<FieldKey, number>):
 /** Parse a header + rows grid (from CSV or the Sheets API) into records, keeping per-row problems. */
 export function parseGrid(grid: Cell[][]): ParsedTable {
   const [headerRow, ...rows] = grid;
-  if (!headerRow) throw new CatalogFormatError('Catalog is empty (no header row).');
+  if (!headerRow) throw new CliError('Catalog is empty (no header row).');
   const header = headerRow.map(cellText);
-  const { columnIndex, extraHeaders } = mapHeader(header);
+  const columnIndex = mapHeader(header);
   const records: Opportunity[] = [];
   const rowById = new Map<string, number>();
   const issues: RowIssue[] = [];
@@ -102,18 +98,18 @@ export function parseGrid(grid: Cell[][]): ParsedTable {
     rowById.set(record.id, rowNumber);
     records.push(record);
   });
-  return { records, rowById, issues, columnIndex, header, extraHeaders };
+  return { records, rowById, issues, columnIndex, header };
 }
 
 export function parseCatalogCsv(text: string): ParsedTable {
   if (/^\s*<(!doctype|html)/i.test(text)) {
-    throw new CatalogFormatError('Catalog feed returned HTML instead of CSV. The Sheet may be unpublished or the URL is wrong.');
+    throw new CliError('Catalog feed returned HTML instead of CSV. The Sheet may be unpublished or the URL is wrong.');
   }
   let grid: string[][];
   try {
     grid = parse(text, { bom: true, relax_column_count: true, skip_empty_lines: true }) as string[][];
   } catch (e) {
-    throw new CatalogFormatError(`Catalog CSV could not be parsed: ${e instanceof Error ? e.message : String(e)}`);
+    throw new CliError(`Catalog CSV could not be parsed: ${e instanceof Error ? e.message : String(e)}`);
   }
   return parseGrid(grid);
 }

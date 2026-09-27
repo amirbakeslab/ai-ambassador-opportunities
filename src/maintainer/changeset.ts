@@ -14,7 +14,7 @@ import {
 } from '../schema.js';
 
 /** A reviewed source row destined for the Sources tab. */
-export const SourceRowSchema = z.object({
+const SourceRowSchema = z.object({
   id: z.string().regex(ID_PATTERN),
   url: z.string().url(),
   supports: z.string().max(2000),
@@ -24,7 +24,7 @@ export type SourceRow = z.infer<typeof SourceRowSchema>;
 
 const FieldKeySchema = z.enum(FIELD_KEYS as [FieldKey, ...FieldKey[]]);
 
-export const ChangeSchema = z.discriminatedUnion('action', [
+const ChangeSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('add'), id: z.string().regex(ID_PATTERN), record: OpportunitySchema }),
   z.object({
     action: z.literal('update'),
@@ -45,7 +45,7 @@ export const ChangesetSchema = z.object({
 });
 export type Changeset = z.infer<typeof ChangesetSchema>;
 
-export interface ReviewedCandidate {
+interface ReviewedCandidate {
   file: string;
   id: string | null;
   ok: boolean;
@@ -55,7 +55,7 @@ export interface ReviewedCandidate {
 }
 
 /** Convert a draft (nulls = unknown) to a full record for validation. Unknown text becomes blank. */
-export function draftToRecord(c: Candidate): { record?: Opportunity; problems: string[] } {
+function draftToRecord(c: Candidate): { record?: Opportunity; problems: string[] } {
   const r = c.record;
   const problems: string[] = [];
   if (!r.assessment) problems.push('record.assessment must be set by the reviewer (one of the assessment options)');

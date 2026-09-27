@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 
 /**
  * In-memory stand-in for the parts of the Google Sheets API v4 REST surface
- * this CLI uses: spreadsheets.get (sheet/table metadata), values.get with
+ * this CLI uses: spreadsheets.get (sheet/table metadata), values.batchGet with
  * UNFORMATTED_VALUE / FORMULA rendering, and an all-or-nothing
  * spreadsheets.batchUpdate supporting updateCells and appendCells. It also
  * models protected ranges so rejected writes can be tested.
@@ -46,7 +46,7 @@ export class FakeSheets {
   readonly requests: RecordedRequest[] = [];
   private server!: Server;
   baseUrl = '';
-  /** Called after each values.get; lets a test simulate a concurrent human edit. */
+  /** Called after each values.batchGet; lets a test simulate a concurrent human edit. */
   afterRead?: (count: number) => void;
   private reads = 0;
 
@@ -126,8 +126,8 @@ export class FakeSheets {
         },
       };
     }
-    if (req.method === 'GET' && (rest.startsWith('/values/') || rest === '/values:batchGet')) {
-      const ranges = rest === '/values:batchGet' ? url.searchParams.getAll('ranges') : [rest.slice('/values/'.length)];
+    if (req.method === 'GET' && rest === '/values:batchGet') {
+      const ranges = url.searchParams.getAll('ranges');
       const render = url.searchParams.get('valueRenderOption');
       const valueRanges = [];
       for (const range of ranges) {
@@ -140,7 +140,7 @@ export class FakeSheets {
       }
       this.reads += 1;
       this.afterRead?.(this.reads);
-      return { status: 200, body: rest === '/values:batchGet' ? { spreadsheetId: this.opts.spreadsheetId, valueRanges } : valueRanges[0] };
+      return { status: 200, body: { spreadsheetId: this.opts.spreadsheetId, valueRanges } };
     }
     if (req.method === 'POST' && rest === ':batchUpdate') return this.batchUpdate(token, body as { requests: Record<string, any>[] });
     return err(404, 'Not found', 'NOT_FOUND');
@@ -205,7 +205,6 @@ function toStored(cell: any): StoredCell {
   if ('stringValue' in v) return { string: v.stringValue };
   if ('numberValue' in v) return { number: v.numberValue };
   if ('formulaValue' in v) return { formula: v.formulaValue, result: 0 };
-  if ('boolValue' in v) return { string: String(v.boolValue).toUpperCase() };
   return null;
 }
 

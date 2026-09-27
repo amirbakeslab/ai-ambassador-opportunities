@@ -8,11 +8,16 @@ export interface Io {
 }
 
 export type Values = Record<string, string | boolean | undefined>;
-export type Handler = (positionals: string[], values: Values, io: Io) => Promise<number | void>;
+type Handler = (positionals: string[], values: Values, io: Io) => Promise<number | void>;
 
 export interface CommandSpec {
   options: NonNullable<ParseArgsConfig['options']>;
   run: Handler;
+}
+
+/** A string option's value, or undefined when it was not given. */
+export function str(v: Values[string]): string | undefined {
+  return typeof v === 'string' ? v : undefined;
 }
 
 /** Refuse to overwrite an existing file unless --force was given. */

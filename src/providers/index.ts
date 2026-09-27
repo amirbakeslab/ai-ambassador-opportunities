@@ -7,8 +7,8 @@ import { exa } from './exa.js';
 import { firecrawl } from './firecrawl.js';
 import type { SearchProvider } from './types.js';
 
-export const PROVIDERS: Record<string, SearchProvider> = { exa, firecrawl };
-export const DEFAULT_PROVIDER = 'exa';
+const PROVIDERS: Record<string, SearchProvider> = { exa, firecrawl };
+const DEFAULT_PROVIDER = 'exa';
 
 export function getProvider(name: string | undefined): SearchProvider {
   const p = PROVIDERS[(name ?? DEFAULT_PROVIDER).toLowerCase()];

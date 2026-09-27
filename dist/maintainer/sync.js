@@ -9,7 +9,7 @@ import { cleanText } from '../safety.js';
 import { COLUMNS, DATE_FIELDS, FIELD_KEYS, HEADER_BY_KEY, OpportunitySchema, formatZodIssues } from '../schema.js';
 import { ProtectedRangeError } from './sheets-client.js';
 export const SOURCES_TAB = 'Sources';
-export const SOURCE_HEADERS = ['Source ID', 'Source URL', 'What it supports / limitations', 'Last checked'];
+const SOURCE_HEADERS = ['Source ID', 'Source URL', 'What it supports / limitations', 'Last checked'];
 function fingerprint(parts) {
     return createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 }
@@ -61,7 +61,7 @@ function textOf(table, id, field) {
     return rec ? fieldToText(rec, field) : undefined;
 }
 /** Normalise user-facing text for a field so equal values compare equal. */
-export function normalizeFieldText(field, value) {
+function normalizeFieldText(field, value) {
     const v = cleanText(value).trim();
     if (field === 'sourceIds')
         return v.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).join(', ');
@@ -190,7 +190,7 @@ function planSources(changeset, sources, plan) {
 }
 // ---------- requests ----------
 /** Typed literal cell value. stringValue is never parsed as a formula; dates are serial numbers. */
-export function cellFor(field, text) {
+function cellFor(field, text) {
     if (text === '')
         return {};
     if (DATE_FIELDS.includes(field))
@@ -203,7 +203,7 @@ function rowCells(record, width, columnIndex) {
         cells[columnIndex[c.key]] = cellFor(c.key, fieldToText(record, c.key));
     return cells;
 }
-export function buildRequests(plan, state) {
+function buildRequests(plan, state) {
     const { info, table } = state.opportunities;
     const requests = plan.writes.map((w) => ({
         updateCells: {
@@ -291,7 +291,7 @@ export function protectedWrites(plan, state) {
     return out;
 }
 // ---------- readback ----------
-export function verifyReadback(plan, after) {
+function verifyReadback(plan, after) {
     const problems = [];
     const t = after.opportunities.table;
     for (const w of plan.writes) {

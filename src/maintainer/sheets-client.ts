@@ -29,16 +29,12 @@ export function a1Tab(tab: string): string {
  */
 export class ProtectedRangeError extends CliError {
   constructor(principal: string, detail: string) {
-    super(
-      `Google Sheets refused the write because it touches a protected range (${detail}). Nothing was written. ` +
-        `Existing-record updates only write changed cells, so this usually means a new record needed the protected Opportunity ID column or a header. ` +
-        `Ask the spreadsheet owner to allow ${principal} on that protected range, or have the owner add the row by hand.`,
-    );
+    super(`Protected cells: ${detail}. Nothing was written. Ask the spreadsheet owner to let ${principal} edit them, or make the change by hand.`);
     this.name = 'ProtectedRangeError';
   }
 }
 
-export type ExtendedValue = { stringValue: string } | { numberValue: number } | { boolValue: boolean };
+export type ExtendedValue = { stringValue: string } | { numberValue: number };
 export interface CellData {
   userEnteredValue?: ExtendedValue;
 }
@@ -166,10 +162,6 @@ export class SheetsClient {
     return out;
   }
 
-  async tabInfo(title: string): Promise<TabInfo | null> {
-    return (await this.tabs([title])).get(title) ?? null;
-  }
-
   /**
    * Raw grids for several tabs in one values.batchGet call. UNFORMATTED_VALUE
    * returns literal values and date serials; FORMULA reveals formulas.
@@ -181,10 +173,6 @@ export class SheetsClient {
     const parsed = z.object({ valueRanges: z.array(ValuesResponse).optional() }).safeParse(body);
     if (!parsed.success || (parsed.data.valueRanges ?? []).length !== tabs.length) throw new CliError('Unexpected values response from Google Sheets.');
     return parsed.data.valueRanges!.map((r) => r.values ?? []);
-  }
-
-  async values(tab: string, render: 'UNFORMATTED_VALUE' | 'FORMULA'): Promise<Cell[][]> {
-    return (await this.valuesBatch([tab], render))[0]!;
   }
 
   /** One spreadsheets.batchUpdate call. Google applies all requests or none of them. */

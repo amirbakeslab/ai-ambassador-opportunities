@@ -49,7 +49,7 @@ export const FIELD_KEYS = COLUMNS.map((c) => c.key);
 export const DATE_FIELDS = ['deadline', 'lastChecked'];
 export const HEADER_BY_KEY = Object.fromEntries(COLUMNS.map((c) => [c.key, c.header]));
 /** Largest string Google Sheets accepts in one cell. */
-export const MAX_CELL_CHARS = 50_000;
+const MAX_CELL_CHARS = 50_000;
 export const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const text = z
@@ -98,7 +98,7 @@ export const OpportunitySchema = z.object({
     lastChecked: isoDate.nullable(),
 });
 /** Draft record produced by `propose`. Unknown values stay null rather than being guessed. */
-export const DraftRecordSchema = z.object({
+const DraftRecordSchema = z.object({
     id: z.string().regex(ID_PATTERN).nullable(),
     company: text.nullable(),
     program: text.nullable(),
@@ -122,22 +122,24 @@ export const DraftRecordSchema = z.object({
     sourceIds: z.array(z.string().regex(ID_PATTERN)),
     lastChecked: isoDate.nullable(),
 });
-export const SourceRefSchema = z.object({
+const SourceRefSchema = z.object({
     id: z.string().regex(ID_PATTERN),
     url: httpUrl,
     title: z.string().nullable(),
     retrievedAt: z.string(),
     fetcher: z.string(),
-    excerpt: z.string(),
+    /** Written by early 0.1.0 builds; accepted but no longer produced. */
+    excerpt: z.string().optional(),
 });
 export const CandidateSchema = z.object({
     schema: z.literal('ai-ambassador-opportunities/candidate@1'),
     createdAt: z.string(),
     tool: z.object({ name: z.string(), version: z.string() }),
-    reviewState: z.enum(['draft', 'needs-review']),
     record: DraftRecordSchema,
     sources: z.array(SourceRefSchema),
-    evidence: z.object({ sha256: z.string(), chars: z.number(), text: z.string() }),
+    // reviewState, evidence.sha256 and evidence.chars come from early 0.1.0 files; accepted, no longer written.
+    reviewState: z.enum(['draft', 'needs-review']).optional(),
+    evidence: z.object({ text: z.string(), sha256: z.string().optional(), chars: z.number().optional() }),
     formatter: z
         .object({
         model: z.string(),

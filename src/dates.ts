@@ -45,7 +45,3 @@ export function isoToSerial(isoDate: string): number {
   if (Number.isNaN(t)) throw new DateParseError(`invalid ISO date ${isoDate}`);
   return Math.round((t - SHEETS_EPOCH_MS) / DAY_MS);
 }
-
-export function todayIso(now = new Date()): string {
-  return now.toISOString().slice(0, 10);
-}

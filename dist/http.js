@@ -16,9 +16,9 @@ export class RequestBudget {
         return this.used;
     }
 }
-export const DEFAULT_MAX_RESPONSE_BYTES = 10_000_000;
+const DEFAULT_MAX_RESPONSE_BYTES = 10_000_000;
 /** Read a response body as text, aborting once more than maxBytes have arrived. */
-export async function readBounded(res, maxBytes, provider) {
+async function readBounded(res, maxBytes, provider) {
     const declared = Number(res.headers.get('content-length'));
     if (Number.isFinite(declared) && declared > maxBytes) {
         await res.body?.cancel().catch(() => undefined);
@@ -78,7 +78,7 @@ export async function request(url, opts) {
         try {
             const hasJson = opts.body !== undefined;
             res = await f(url, {
-                method: opts.method ?? (hasJson || opts.rawBody !== undefined ? 'POST' : 'GET'),
+                method: hasJson || opts.rawBody !== undefined ? 'POST' : 'GET',
                 headers: {
                     'user-agent': USER_AGENT,
                     ...(hasJson ? { 'content-type': 'application/json' } : {}),
@@ -86,7 +86,6 @@ export async function request(url, opts) {
                 },
                 body: hasJson ? JSON.stringify(opts.body) : opts.rawBody,
                 signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
-                redirect: opts.redirect ?? 'follow',
             });
         }
         catch (err) {
@@ -111,7 +110,7 @@ export async function request(url, opts) {
                 throw new RateLimitError(opts.provider, after);
             }
         }
-        return { status: res.status, headers: res.headers, text: await readBounded(res, opts.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES, opts.provider), url: res.url || url };
+        return { status: res.status, text: await readBounded(res, opts.maxBytes ?? DEFAULT_MAX_RESPONSE_BYTES, opts.provider) };
     }
 }
 export function parseJson(text) {

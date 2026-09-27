@@ -11,9 +11,9 @@ import type { Change, Changeset, SourceRow } from './changeset.js';
 import { ProtectedRangeError, type BlockedRange, type CellData, type ExtendedValue, type SheetRequest, type SheetsClient, type TabInfo } from './sheets-client.js';
 
 export const SOURCES_TAB = 'Sources';
-export const SOURCE_HEADERS = ['Source ID', 'Source URL', 'What it supports / limitations', 'Last checked'] as const;
+const SOURCE_HEADERS = ['Source ID', 'Source URL', 'What it supports / limitations', 'Last checked'] as const;
 
-export interface SourcesState {
+interface SourcesState {
   info: TabInfo;
   grid: Cell[][];
   byId: Map<string, { row: number; url: string }>;
@@ -77,7 +77,7 @@ export async function readSheetState(client: SheetsClient, tab: string): Promise
 
 // ---------- planning ----------
 
-export interface CellWrite {
+interface CellWrite {
   id: string;
   field: FieldKey;
   /** 0-based grid row and column. */
@@ -102,7 +102,7 @@ function textOf(table: ParsedTable, id: string, field: FieldKey): string | undef
 }
 
 /** Normalise user-facing text for a field so equal values compare equal. */
-export function normalizeFieldText(field: FieldKey, value: string): string {
+function normalizeFieldText(field: FieldKey, value: string): string {
   const v = cleanText(value).trim();
   if (field === 'sourceIds') return v.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).join(', ');
   if ((DATE_FIELDS as readonly string[]).includes(field)) return parseDateCell(v) ?? '';
@@ -222,7 +222,7 @@ function planSources(changeset: Changeset, sources: SourcesState | null, plan: P
 // ---------- requests ----------
 
 /** Typed literal cell value. stringValue is never parsed as a formula; dates are serial numbers. */
-export function cellFor(field: FieldKey, text: string): CellData {
+function cellFor(field: FieldKey, text: string): CellData {
   if (text === '') return {};
   if ((DATE_FIELDS as readonly string[]).includes(field)) return { userEnteredValue: { numberValue: isoToSerial(text) } };
   return { userEnteredValue: { stringValue: text } };
@@ -234,7 +234,7 @@ function rowCells(record: Opportunity, width: number, columnIndex: Record<FieldK
   return cells;
 }
 
-export function buildRequests(plan: Plan, state: Pick<SheetState, 'opportunities' | 'sources'>): SheetRequest[] {
+function buildRequests(plan: Plan, state: Pick<SheetState, 'opportunities' | 'sources'>): SheetRequest[] {
   const { info, table } = state.opportunities;
   const requests: SheetRequest[] = plan.writes.map((w) => ({
     updateCells: {
@@ -324,7 +324,7 @@ export function protectedWrites(plan: Plan, state: Pick<SheetState, 'opportuniti
 
 // ---------- readback ----------
 
-export function verifyReadback(plan: Plan, after: Pick<SheetState, 'opportunities' | 'sources'>): string[] {
+function verifyReadback(plan: Plan, after: Pick<SheetState, 'opportunities' | 'sources'>): string[] {
   const problems: string[] = [];
   const t = after.opportunities.table;
   for (const w of plan.writes) {

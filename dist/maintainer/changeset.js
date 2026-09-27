@@ -3,14 +3,14 @@ import { TOOL_VERSION } from '../config.js';
 import { fieldToText } from '../records.js';
 import { CandidateSchema, FIELD_KEYS, formatZodIssues, HEADER_BY_KEY, ID_PATTERN, OpportunitySchema, } from '../schema.js';
 /** A reviewed source row destined for the Sources tab. */
-export const SourceRowSchema = z.object({
+const SourceRowSchema = z.object({
     id: z.string().regex(ID_PATTERN),
     url: z.string().url(),
     supports: z.string().max(2000),
     lastChecked: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 const FieldKeySchema = z.enum(FIELD_KEYS);
-export const ChangeSchema = z.discriminatedUnion('action', [
+const ChangeSchema = z.discriminatedUnion('action', [
     z.object({ action: z.literal('add'), id: z.string().regex(ID_PATTERN), record: OpportunitySchema }),
     z.object({
         action: z.literal('update'),
@@ -28,7 +28,7 @@ export const ChangesetSchema = z.object({
     sources: z.array(SourceRowSchema),
 });
 /** Convert a draft (nulls = unknown) to a full record for validation. Unknown text becomes blank. */
-export function draftToRecord(c) {
+function draftToRecord(c) {
     const r = c.record;
     const problems = [];
     if (!r.assessment)

@@ -5,8 +5,8 @@ import { cacheDir, env } from '../config.js';
 import { MissingKeyError, UsageError } from '../errors.js';
 import { exa } from './exa.js';
 import { firecrawl } from './firecrawl.js';
-export const PROVIDERS = { exa, firecrawl };
-export const DEFAULT_PROVIDER = 'exa';
+const PROVIDERS = { exa, firecrawl };
+const DEFAULT_PROVIDER = 'exa';
 export function getProvider(name) {
     const p = PROVIDERS[(name ?? DEFAULT_PROVIDER).toLowerCase()];
     if (!p)

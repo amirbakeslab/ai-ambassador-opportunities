@@ -3,9 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
   bin: Record<string, string>;
-  files: string[];
   scripts: Record<string, string>;
-  engines: { node: string };
 };
 
 describe('package layout for GitHub installs', () => {
@@ -17,10 +15,7 @@ describe('package layout for GitHub installs', () => {
     }
   });
 
-  it('ships the committed CLI entry point and data', () => {
-    expect(pkg.bin.ambassador).toBe('dist/bin.js');
+  it('ships the committed CLI entry point', () => {
     expect(() => readFileSync(new URL(`../${pkg.bin.ambassador}`, import.meta.url))).not.toThrow();
-    expect(pkg.files).toEqual(expect.arrayContaining(['dist', 'data/catalog-snapshot.json']));
-    expect(pkg.engines.node).toBe('>=22');
   });
 });

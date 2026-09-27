@@ -14,10 +14,8 @@ export class UsageError extends CliError {
     }
 }
 export class MissingKeyError extends CliError {
-    envVar;
     constructor(envVar, purpose) {
         super(`${envVar} is not set. ${purpose} Set it in your own shell environment; browsing the catalog does not need it.`);
-        this.envVar = envVar;
         this.name = 'MissingKeyError';
     }
 }
@@ -29,18 +27,14 @@ export class QuotaError extends CliError {
     }
 }
 export class RateLimitError extends CliError {
-    retryAfterSeconds;
     constructor(provider, retryAfterSeconds) {
         super(`${provider}: rate limited${retryAfterSeconds !== null ? ` (retry after ${retryAfterSeconds}s)` : ''}. Wait and try again later.`);
-        this.retryAfterSeconds = retryAfterSeconds;
         this.name = 'RateLimitError';
     }
 }
 export class ProviderError extends CliError {
-    status;
-    constructor(provider, detail, status) {
+    constructor(provider, detail) {
         super(`${provider}: ${detail}`);
-        this.status = status;
         this.name = 'ProviderError';
     }
 }

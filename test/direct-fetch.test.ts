@@ -123,7 +123,7 @@ describe('direct page fetch', () => {
   });
 
   it('re-validates redirects to hostnames that resolve privately', async () => {
-    const { port } = await serve((req, res) => {
+    const { port } = await serve((_req, res) => {
       res.writeHead(301, { location: `http://evil.example:${(server!.address() as AddressInfo).port}/x` });
       res.end();
     });

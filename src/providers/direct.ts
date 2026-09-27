@@ -11,7 +11,7 @@ import { clip, MAX_EVIDENCE_CHARS, type PageContent } from './types.js';
 
 const MAX_REDIRECTS = 5;
 /** Upper bound on decoded page bytes read from an untrusted site. */
-export const MAX_PAGE_BYTES = 3_000_000;
+const MAX_PAGE_BYTES = 3_000_000;
 const TIMEOUT_MS = 20_000;
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…' };
@@ -43,14 +43,13 @@ export function htmlToText(html: string): { title: string | null; text: string }
   return { title: titleMatch?.[1] ? decodeEntities(titleMatch[1]).replace(/\s+/g, ' ').trim() || null : null, text };
 }
 
-export interface DirectOptions {
+interface DirectOptions {
   budget: RequestBudget;
   /** DNS resolver; injectable for tests. */
   resolve?: Resolver;
   /** Address policy; defaults to rejecting private/local addresses. Injectable for tests only. */
   isBlocked?: (address: string) => boolean;
   maxBytes?: number;
-  timeoutMs?: number;
 }
 
 const defaultResolver: Resolver = async (host) => (await dnsLookup(host, { all: true, verbatim: true })).map((a) => a.address);
@@ -62,7 +61,7 @@ const defaultResolver: Resolver = async (host) => (await dnsLookup(host, { all: 
  * checked, so a second DNS answer (rebinding) cannot redirect it. TLS still
  * verifies the certificate against the URL hostname.
  */
-export function pinnedLookup(resolve: Resolver, isBlocked: (a: string) => boolean, onResolved?: (host: string, address: string) => void): LookupFunction {
+function pinnedLookup(resolve: Resolver, isBlocked: (a: string) => boolean): LookupFunction {
   return ((hostname: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
     resolve(hostname).then(
       (addresses) => {
@@ -70,7 +69,6 @@ export function pinnedLookup(resolve: Resolver, isBlocked: (a: string) => boolea
         const bad = addresses.find(isBlocked);
         if (bad) return callback(Object.assign(new Error(`${hostname} resolves to non-public address ${bad}`), { code: 'EPRIVATE' }));
         const address = addresses[0]!;
-        onResolved?.(hostname, address);
         const family = isIP(address);
         if (options?.all) callback(null, [{ address, family }]);
         else callback(null, address, family);
@@ -101,7 +99,7 @@ function decoder(encoding: string | undefined): Transform | null {
 }
 
 /** One GET with a pinned, validated address and a streaming byte cap (applied after decompression). */
-export function pinnedGet(url: URL, lookup: LookupFunction, maxBytes: number, timeoutMs: number): Promise<RawResponse> {
+function pinnedGet(url: URL, lookup: LookupFunction, maxBytes: number, timeoutMs: number): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     const req = (url.protocol === 'https:' ? httpsRequest : httpRequest)(
       url,
@@ -163,14 +161,14 @@ export async function directContent(url: string, opts: DirectOptions): Promise<P
   for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
     if (hop > 0) checkUrlShape(current.toString(), isBlocked);
     opts.budget.take();
-    const res = await pinnedGet(current, lookup, maxBytes, opts.timeoutMs ?? TIMEOUT_MS);
+    const res = await pinnedGet(current, lookup, maxBytes, TIMEOUT_MS);
     if (res.status >= 300 && res.status < 400) {
       const loc = res.headers.location;
       if (!loc) throw new ProviderError('page fetch', `redirect without location from ${current}`);
       current = new URL(loc, current);
       continue;
     }
-    if (res.status !== 200) throw new ProviderError('page fetch', `HTTP ${res.status} from ${current}`, res.status);
+    if (res.status !== 200) throw new ProviderError('page fetch', `HTTP ${res.status} from ${current}`);
     const type = String(res.headers['content-type'] ?? '');
     if (!/html|text\/plain|xml/i.test(type)) throw new ProviderError('page fetch', `unsupported content type "${type}"; try --provider exa or firecrawl`);
     const raw = res.body.toString('utf8');

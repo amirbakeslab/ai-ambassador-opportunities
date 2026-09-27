@@ -4,10 +4,8 @@ import { COLUMNS, DATE_FIELDS, FIELD_KEYS, formatZodIssues, OpportunitySchema } 
 import { DateParseError, parseDateCell } from './dates.js';
 import { CliError } from './errors.js';
 import { neutralizeFormula } from './safety.js';
-export class CatalogFormatError extends CliError {
-}
-export function mapHeader(header) {
-    const normalized = header.map((h) => h.trim().replace(/^﻿/, ''));
+function mapHeader(header) {
+    const normalized = header.map((h) => h.trim().replace(/^\uFEFF/, ''));
     const columnIndex = {};
     const missing = [];
     for (const c of COLUMNS) {
@@ -15,15 +13,14 @@ export function mapHeader(header) {
         if (i === -1)
             missing.push(c.header);
         else if (normalized.indexOf(c.header, i + 1) !== -1)
-            throw new CatalogFormatError(`Catalog header "${c.header}" appears more than once.`);
+            throw new CliError(`Catalog header "${c.header}" appears more than once.`);
         else
             columnIndex[c.key] = i;
     }
     if (missing.length) {
-        throw new CatalogFormatError(`Catalog is missing expected column(s): ${missing.join(', ')}. The published format may have changed.`);
+        throw new CliError(`Catalog is missing expected column(s): ${missing.join(', ')}. The published format may have changed.`);
     }
-    const known = new Set(COLUMNS.map((c) => c.header));
-    return { columnIndex, extraHeaders: normalized.filter((h) => h && !known.has(h)) };
+    return columnIndex;
 }
 function cellText(v) {
     if (v === null || v === undefined)
@@ -31,7 +28,7 @@ function cellText(v) {
     return String(v).trim();
 }
 /** Convert one raw row into a validated record, or a list of problems. */
-export function rowToRecord(row, columnIndex) {
+function rowToRecord(row, columnIndex) {
     const problems = [];
     const draft = {};
     for (const key of FIELD_KEYS) {
@@ -67,9 +64,9 @@ export function rowToRecord(row, columnIndex) {
 export function parseGrid(grid) {
     const [headerRow, ...rows] = grid;
     if (!headerRow)
-        throw new CatalogFormatError('Catalog is empty (no header row).');
+        throw new CliError('Catalog is empty (no header row).');
     const header = headerRow.map(cellText);
-    const { columnIndex, extraHeaders } = mapHeader(header);
+    const columnIndex = mapHeader(header);
     const records = [];
     const rowById = new Map();
     const issues = [];
@@ -89,18 +86,18 @@ export function parseGrid(grid) {
         rowById.set(record.id, rowNumber);
         records.push(record);
     });
-    return { records, rowById, issues, columnIndex, header, extraHeaders };
+    return { records, rowById, issues, columnIndex, header };
 }
 export function parseCatalogCsv(text) {
     if (/^\s*<(!doctype|html)/i.test(text)) {
-        throw new CatalogFormatError('Catalog feed returned HTML instead of CSV. The Sheet may be unpublished or the URL is wrong.');
+        throw new CliError('Catalog feed returned HTML instead of CSV. The Sheet may be unpublished or the URL is wrong.');
     }
     let grid;
     try {
         grid = parse(text, { bom: true, relax_column_count: true, skip_empty_lines: true });
     }
     catch (e) {
-        throw new CatalogFormatError(`Catalog CSV could not be parsed: ${e instanceof Error ? e.message : String(e)}`);
+        throw new CliError(`Catalog CSV could not be parsed: ${e instanceof Error ? e.message : String(e)}`);
     }
     return parseGrid(grid);
 }

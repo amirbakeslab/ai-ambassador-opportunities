@@ -9,7 +9,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { clip, MAX_EVIDENCE_CHARS } from './types.js';
 const MAX_REDIRECTS = 5;
 /** Upper bound on decoded page bytes read from an untrusted site. */
-export const MAX_PAGE_BYTES = 3_000_000;
+const MAX_PAGE_BYTES = 3_000_000;
 const TIMEOUT_MS = 20_000;
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…' };
 function decodeEntities(s) {
@@ -45,7 +45,7 @@ const defaultResolver = async (host) => (await dnsLookup(host, { all: true, verb
  * checked, so a second DNS answer (rebinding) cannot redirect it. TLS still
  * verifies the certificate against the URL hostname.
  */
-export function pinnedLookup(resolve, isBlocked, onResolved) {
+function pinnedLookup(resolve, isBlocked) {
     return ((hostname, options, callback) => {
         resolve(hostname).then((addresses) => {
             if (addresses.length === 0)
@@ -54,7 +54,6 @@ export function pinnedLookup(resolve, isBlocked, onResolved) {
             if (bad)
                 return callback(Object.assign(new Error(`${hostname} resolves to non-public address ${bad}`), { code: 'EPRIVATE' }));
             const address = addresses[0];
-            onResolved?.(hostname, address);
             const family = isIP(address);
             if (options?.all)
                 callback(null, [{ address, family }]);
@@ -77,7 +76,7 @@ function decoder(encoding) {
     }
 }
 /** One GET with a pinned, validated address and a streaming byte cap (applied after decompression). */
-export function pinnedGet(url, lookup, maxBytes, timeoutMs) {
+function pinnedGet(url, lookup, maxBytes, timeoutMs) {
     return new Promise((resolve, reject) => {
         const req = (url.protocol === 'https:' ? httpsRequest : httpRequest)(url, {
             method: 'GET',
@@ -137,7 +136,7 @@ export async function directContent(url, opts) {
         if (hop > 0)
             checkUrlShape(current.toString(), isBlocked);
         opts.budget.take();
-        const res = await pinnedGet(current, lookup, maxBytes, opts.timeoutMs ?? TIMEOUT_MS);
+        const res = await pinnedGet(current, lookup, maxBytes, TIMEOUT_MS);
         if (res.status >= 300 && res.status < 400) {
             const loc = res.headers.location;
             if (!loc)
@@ -146,7 +145,7 @@ export async function directContent(url, opts) {
             continue;
         }
         if (res.status !== 200)
-            throw new ProviderError('page fetch', `HTTP ${res.status} from ${current}`, res.status);
+            throw new ProviderError('page fetch', `HTTP ${res.status} from ${current}`);
         const type = String(res.headers['content-type'] ?? '');
         if (!/html|text\/plain|xml/i.test(type))
             throw new ProviderError('page fetch', `unsupported content type "${type}"; try --provider exa or firecrawl`);

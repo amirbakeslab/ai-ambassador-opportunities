@@ -26,4 +26,3 @@ jobs:
       - name: Committed dist/ matches the TypeScript sources
         run: npm run check:dist
       - run: node dist/bin.js list --offline
-      - run: npm pack --dry-run

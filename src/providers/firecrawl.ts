@@ -11,13 +11,12 @@ const SearchResponse = z.object({
   data: z.object({
     web: z.array(z.object({ url: z.string(), title: z.string().nullish(), description: z.string().nullish() })).nullish(),
   }),
-  warning: z.string().nullish(),
 });
 const ScrapeResponse = z.object({
   success: z.boolean(),
   data: z.object({
     markdown: z.string().nullish(),
-    metadata: z.object({ title: z.string().nullish(), sourceURL: z.string().nullish(), statusCode: z.number().nullish() }).passthrough().nullish(),
+    metadata: z.object({ title: z.string().nullish(), sourceURL: z.string().nullish(), statusCode: z.number().nullish() }).nullish(),
   }),
 });
 const ErrorEnvelope = z.object({ error: z.string().optional(), code: z.string().optional() });
@@ -31,9 +30,9 @@ function check(res: HttpResult): unknown {
   const env = ErrorEnvelope.safeParse(body);
   const msg = env.success && env.data.error ? env.data.error : `HTTP ${res.status}`;
   if (res.status === 402) throw new QuotaError('Firecrawl', msg);
-  if (res.status === 401) throw new ProviderError('Firecrawl', 'API key was rejected (401). Check FIRECRAWL_API_KEY.', 401);
-  if (res.status === 408) throw new ProviderError('Firecrawl', 'request timed out (408)', 408);
-  throw new ProviderError('Firecrawl', msg, res.status);
+  if (res.status === 401) throw new ProviderError('Firecrawl', 'API key was rejected (401). Check FIRECRAWL_API_KEY.');
+  if (res.status === 408) throw new ProviderError('Firecrawl', 'request timed out (408)');
+  throw new ProviderError('Firecrawl', msg);
 }
 
 function headers(ctx: ProviderContext) {

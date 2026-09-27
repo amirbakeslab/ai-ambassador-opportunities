@@ -19,7 +19,7 @@ export const DEFAULT_SHEET_URL = `https://docs.google.com/spreadsheets/d/${DEFAU
 export const DEFAULT_CSV_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vSPmNeiTw-xmXCIxrNL__gRZnl7wlC8pv94uLYAM7sTiLk4rQ4gPl8nGA_J9WZcy9vwiQsrOKuo4cMo/pub?gid=1872724035&single=true&output=csv';
 export const DEFAULT_TAB = 'Opportunities';
-export const SOURCES_GID = 1002279870;
+const SOURCES_GID = 1002279870;
 
 /** Anonymous CSV export of the public Sources tab (the Sheet is viewable by anyone with the link). */
 export function sourcesCsvUrl(): string {

@@ -1,13 +1,10 @@
 # AI Ambassador Opportunities
 
-A command-line tool for browsing, researching and proposing student ambassador, campus-leader and community programs run by AI, developer-tool and cloud companies.
+Browse and research student ambassador, campus-leader and community programs run by AI, developer-tool and cloud companies.
 
-The catalog lives in a public Google Sheet, which is the authoritative copy. The CLI reads the Sheet's published CSV feed. Browsing needs no Google account and no API keys.
+The catalog is a public Google Sheet: https://docs.google.com/spreadsheets/d/1TKibIwQrSLoJOYSswXYuqfRsFrkRyVIsqiw4F6dp-Rc/edit. This command-line tool reads its published feed. Browsing needs no account and no API keys.
 
-- **Catalog (view only):** https://docs.google.com/spreadsheets/d/1TKibIwQrSLoJOYSswXYuqfRsFrkRyVIsqiw4F6dp-Rc/edit
-- **Published feed:** the Sheet's Opportunities tab, published as CSV (see `src/config.ts`)
-
-The default catalog was compiled for students at the University of Pittsburgh, so it includes a "Pitt applicability" column. Listing a program does not mean a partnership with, or endorsement by, any company or university.
+The catalog was compiled for University of Pittsburgh students, so it has a "Pitt applicability" column. A listing is not a partnership with, or an endorsement by, any company or university.
 
 ## Install
 
@@ -15,175 +12,72 @@ Requires Node.js 22 or newer.
 
 ```sh
 npm install -g --install-links github:amirbakeslab/ai-ambassador-opportunities
-ambassador --help
 ```
 
-Keep `--install-links`. Without it, npm 10 can leave a global install from a Git URL pointing at a temporary folder that it has already deleted.
-
-Or run it once without a global install:
+Keep `--install-links`: without it, npm can leave a broken global install from a Git URL. To run it once without installing:
 
 ```sh
 npx github:amirbakeslab/ai-ambassador-opportunities list
 ```
 
-The package is not published to the npm registry. Both commands install it straight from this repository. The repository includes the compiled `dist/` output, so nothing is built during installation.
-
-## Browse the catalog
+## Browse
 
 ```sh
-ambassador list                             # all entries, including closed and historical ones
-ambassador list --status rolling            # one status; comma-separate several
-ambassador list --open                      # Rolling, Registration available, Interest form available
-ambassador list --assessment "worth considering" --company microsoft
-ambassador list --text "stipend"            # word search across every field
-ambassador show anthropic-campus-2026       # full record and its source URLs
-ambassador export --format csv --output opportunities.csv
-ambassador export --format json --status closed
-ambassador doctor                           # checks feed, cache, keys (presence only) and formatters
+ambassador list --open                      # programs with a current way to apply or register
+ambassador list --status rolling --company microsoft
+ambassador show anthropic-campus-2026       # full record and its sources
+ambassador export --output opportunities.csv
 ```
 
-Every listing states where its data came from and when that copy was fetched:
+Run `ambassador --help` for every filter and option.
 
-| Origin | When it is used |
-| --- | --- |
-| Live published feed | Default. The CSV is fetched and cached. |
-| Cached copy | Reused for 15 minutes, and used when the network is down or with `--offline`. Shows the original fetch time. |
-| Bundled snapshot | Used only when there is no cache and the feed is unreachable. Labelled as possibly out of date. |
+Each listing says where its data came from and when it was fetched. The tool caches the feed for 15 minutes. If the network is down, or with `--offline`, it uses the cache or a snapshot bundled with the release. `--refresh` always fetches the live feed. Fetch time is not the same as a record's **Last checked** date, which is when a person last verified the program's sources.
 
-`--refresh` always fetches the live feed and fails instead of falling back. Google can take a few minutes to republish after a Sheet edit. Fetch time is separate from each record's **Last checked** date, which is when a person last verified the program's source pages.
+Reading the catalog:
 
-## Data definitions
+- **Application status** says whether and how you can apply now. **Assessment** is an editorial judgement of the program's value to students.
+- A blank **Deadline** means no exact deadline has been confirmed. It does not mean rolling admission.
+- **Ambassador benefits** go to the individual. **Benefits for students / club** go to other students or the club.
+- **Source IDs** point to the Sheet's Sources tab, which lists each source's URL and what it supports.
 
-| Column | Meaning |
-| --- | --- |
-| Opportunity ID | Stable lowercase slug. Tools match records by ID, never by row number. |
-| Company, Program, Category, Description | What the program is. |
-| Application status | One of: Rolling, Registration available, Interest form available, Future interest only, Closed, Historical, Needs verification, Invitation only. |
-| Assessment | Editorial judgement: Worth considering, Needs clarification, Low value, Not a student role. |
-| Assessment reason | Why that assessment was given. |
-| Application / program URL | Official application, interest form or program hub. A working Apply button does not prove a current intake. |
-| Deadline | Exact date only when a source states one. **Blank means unknown, not rolling.** |
-| Deadline / intake notes | Time zones, windows and caveats. |
-| Program dates / duration, Time commitment | Approximate periods stay as text. |
-| Ambassador benefits | Benefits for the individual ambassador. |
-| Benefits for students / club | Benefits for other students or the club. Personal credits are not campus-wide benefits. |
-| Expectations, Eligibility, Geography, Restrictions / exclusivity | Obligations and limits. |
-| Pitt applicability | Local fit for the catalog's original audience. |
-| Source IDs | Keys into the Sheet's Sources tab, which maps each ID to a URL and what it supports. |
-| Last checked | Date a person last reviewed the sources. |
+## Research (optional)
 
-## Research new programs (optional, uses your own keys)
-
-Search and page fetching use **your own** API keys, set in your own shell. The tool never ships, stores or prints key values. `doctor` reports only whether each key is set.
+Search and page fetching use your own API keys, set in your shell. The tool never stores or prints their values.
 
 ```sh
-export EXA_API_KEY=...          # default search provider   https://exa.ai/pricing
-export FIRECRAWL_API_KEY=...    # optional alternative      https://www.firecrawl.dev/pricing
-export OPENROUTER_API_KEY=...   # optional formatting       https://openrouter.ai
+export EXA_API_KEY=...          # default search provider (https://exa.ai/pricing)
+export FIRECRAWL_API_KEY=...    # alternative provider (https://www.firecrawl.dev/pricing)
 
 ambassador search "AI student ambassador program"
-ambassador search --provider firecrawl "campus developer programs" --limit 5
 ambassador propose https://example.com/campus-program --output candidate.json
 ```
 
-- Search results are leads, not verified openings. Results that are already a catalog entry, or already cited in the Sources tab, are marked.
-- Free allowances are each provider's account policy and can change. This tool does not guarantee free use. Check their pricing pages.
-- Each command makes at most 5 provider requests by default (`--max-requests`, `AMBASSADOR_MAX_REQUESTS`). Retries are bounded and honour `Retry-After`. When a provider reports exhausted credits or budget, the command stops. It never switches to another provider or a paid model.
-- Identical search and page requests are cached for 24 hours. Use `--no-cache` to skip the cache.
-- Search queries go to the provider you chose. Include only public information in them.
+- Search results are leads, not verified openings. Results the catalog already lists or cites are marked.
+- Each command makes at most 5 provider requests unless you raise `--max-requests`. It stops when a provider reports exhausted credit, and never switches to another provider or a paid model. Free allowances are set by each provider and can change.
+- Repeated identical requests are cached for 24 hours (`--no-cache` to skip).
+- Search queries go to the provider you chose, so include only public information.
 
-`propose` fetches one page and writes a local candidate JSON file. The page text is stored as evidence, with source links and fetch times. Without `EXA_API_KEY` or `--provider`, it fetches the page directly. Direct fetches refuse local and private addresses, check every redirect, connect only to the DNS answer they validated, and stop reading pages over 3 MB.
+`propose` saves the page text and source link as a local candidate file; nothing is submitted. It uses Exa when `EXA_API_KEY` is set (or the provider you name with `--provider`). Otherwise it fetches the page directly, refusing local or private addresses and very large pages.
 
-### Optional model formatting
+### Optional formatting
 
-Formatting is off by default. The no-model workflow always works: every unknown field stays `null`, for you to fill in from the evidence.
+Formatting is optional; fill in missing fields from the source. With an `OPENROUTER_API_KEY`, one of two free OpenRouter models can draft the fields:
 
 ```sh
 ambassador propose <url> --format-with dots     # dots-studio/dots-3-note-preview:free
 ambassador propose <url> --format-with laguna   # poolside/laguna-s-2.1:free
 ```
 
-- Only these two exact OpenRouter model IDs are offered. Before each use, the tool checks OpenRouter's model list and refuses a model that is missing or has any non-zero price. It never substitutes another model. This check, the key check and the output-file check all run before any paid page fetch.
-- If OpenRouter lists structured-output support for a model (currently Dots), the tool requests an enforced JSON schema. Other models (currently Laguna) are prompted for JSON, and the tool validates the output itself.
-- Model output is untrusted. Any value whose content is not found in the page text is discarded. So is a deadline date that does not appear on the page. Invalid output leaves a reviewable candidate with the raw response attached. If the model is rate limited, out of credit or unreachable, the candidate is still saved from the page evidence, and the command exits with code 1.
-- Models never set the status, assessment or local applicability. Maintainers decide those.
+The tool confirms the model is listed and free before each use, and never substitutes another model. It drops model values whose words it cannot find in the page text. That is a filter, not a guarantee, so check every value against the source. Models never set the status or assessment.
 
 ## Contributing
 
-Anyone can suggest additions or corrections. Nothing is posted automatically on your behalf.
+To suggest a program or a correction, [open a proposal issue](https://github.com/amirbakeslab/ai-ambassador-opportunities/issues/new?template=program-proposal.yml). Include the official program URL and what should change; a candidate file from `ambassador propose` is welcome but optional. Use public, official sources only, and leave out personal details. Pull requests for code are welcome.
 
-1. Run `ambassador propose <official-url> --output candidate.json`, or write a correction by hand.
-2. Check the candidate against the source page. Fill in facts you verified and leave the rest `null`.
-3. Open an issue with the "Program proposal" template and paste the candidate JSON. You can also open a pull request that adds the file under `proposals/`.
+Maintainers publish changes to the Sheet as described in [MAINTAINING.md](MAINTAINING.md).
 
-Only official program pages or clearly identified recruitment partners count as sources. Do not include personal contact details, application answers or private discussions.
+## Sources and license
 
-## Maintainers
+Program facts summarise public pages listed in the Sheet's Sources tab. Assessments are editorial. Program names and trademarks belong to their owners. Confirm details on the official page before applying.
 
-Public users have view-only access to the Sheet and cannot change it. Maintainers edit through their own Google permissions:
-
-- **People** edit the Sheet directly in Google Sheets.
-- **Automation** uses a dedicated service account that has Editor access to this spreadsheet only. It needs no project IAM roles, and the Google Sheets API must be enabled.
-
-Keep the key file outside any repository, readable only by you (`chmod 600`), and pass its location through the environment:
-
-```sh
-export AMBASSADOR_GOOGLE_CREDENTIALS=/secure/path/service-account.json
-# or a short-lived token from an account with edit access:
-export AMBASSADOR_GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token)"
-```
-
-Student commands never load these credentials. Never run privileged automation on untrusted pull-request code.
-
-### Workflow
-
-```sh
-ambassador review candidate.json --output changes.json   # validate and show a precise diff
-ambassador sync --dry-run --changes changes.json         # compare with the current Sheet
-ambassador sync --apply --changes changes.json --sheet-id <spreadsheet-id>
-ambassador backup                                        # full backup of Opportunities and Sources
-ambassador restore <backup.json> --dry-run
-ambassador restore <backup.json> --apply --sheet-id <spreadsheet-id>
-```
-
-How sync protects the catalog:
-
-- **Stable IDs.** Records are matched by Opportunity ID. Sync never changes an ID and never deletes a row. Retire an entry by setting its status to Closed or Historical.
-- **Manual edits win.** A changeset records each field's reviewed value. A field is written only if the Sheet still holds that value. If the Sheet already has the new value, nothing is written. Anything else is a conflict, and the whole sync stops without writing.
-- **Only changed cells are written.** Updates to existing records touch only the cells that change. Protected ID and header cells are never rewritten.
-- **Protected ranges are checked first.** Sync reads the Sheet's protection metadata. If a write would touch a range the current principal cannot edit, sync stops before any backup or write and names the cells. For example, adding a record writes the protected Opportunity ID column. The owner must either allow the maintainer on that range or add the row by hand.
-- **Backups and verification.** Every apply saves a local backup first (default `./ambassador-backups`; change it with `--backup-dir` or `AMBASSADOR_BACKUP_DIR`). It then re-reads the Sheet and stops if anything changed during planning. All changes go in one `spreadsheets.batchUpdate` call, which Google applies completely or not at all. Afterwards, sync reads every written value back to confirm it.
-- **Literal values.** Text is written as typed string values, so `=`, `+`, `@` and `-` prefixes never become formulas. Dates are written as date serials. CSV exports prefix formula-like cells with `'`.
-- **Idempotent.** Re-running the same changeset writes nothing.
-
-**Use one designated sync writer.** Google Sheets has no compare-and-swap. An edit that lands between sync's final re-read and its write is not detected. The local lock only prevents two syncs on the same computer. Pause direct edits while a sync runs. If you ever need several writers, move publication to a single serialized service.
-
-### Routine care
-
-- Check deadlines weekly and other entries monthly. Update **Last checked** and the sources whenever you edit.
-- **Rotate credentials:** create a new service-account key, update the local path, test with `sync --dry-run`, then delete the old key in Google Cloud.
-- **Remove an editor:** remove their Sheet access. If they held a service-account key, rotate it.
-- **Hand off ownership:** transfer Sheet ownership in Google Drive. Confirm the protected ranges (headers and the ID column) and sharing settings, then re-share the service account if needed.
-
-## Development
-
-```sh
-npm install
-npm test            # offline suite, including a local Sheets API stand-in
-npm run typecheck
-npm run compile     # commit the updated dist/ with source changes; CI checks they match
-```
-
-The compile script is deliberately not named `build`. npm prepares a Git-installed package by running its build scripts (`build`, `prepare` and similar), and that preparation breaks global installs and upgrades. With no such script, installing from GitHub only copies the committed `dist/`.
-
-`npm run test:live` runs the live Google Sheets tests. They run only against a disposable copy of the catalog: set `AMBASSADOR_TEST_SHEET_ID` to the copy and `AMBASSADOR_GOOGLE_CREDENTIALS` to credentials with Editor access to it. They refuse to write to the published catalog and restore the copy when they finish.
-
-`npm run snapshot` (after `npm run compile`) refreshes the bundled offline snapshot from the public feed.
-
-## Sources and attribution
-
-Program facts summarise public pages from each program's official site or a clearly identified recruitment partner. These pages are listed in the Sources tab of the Sheet and shown by `ambassador show`. Assessments and reasons are editorial opinions. Program names and trademarks belong to their owners. Always confirm details on the official page before applying.
-
-## License
-
-Code: MIT (see `LICENSE`).
+Code is MIT licensed (see `LICENSE`).

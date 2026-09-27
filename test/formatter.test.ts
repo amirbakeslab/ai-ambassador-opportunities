@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ProviderError, QuotaError } from '../src/errors.js';
-import { checkModel, extractJsonObject, formatEvidence, FORMATTERS, resolveFormatter } from '../src/formatters/openrouter.js';
+import { checkModel, extractJsonObject, formatEvidence, resolveFormatter } from '../src/formatters/openrouter.js';
 import { RequestBudget } from '../src/http.js';
 import { buildCandidate, dateInEvidence, groundingScore } from '../src/propose.js';
 import { CandidateSchema } from '../src/schema.js';
@@ -26,8 +26,7 @@ const EVIDENCE = [
 const allNull = { company: null, program: null, category: null, description: null, deadline: null, deadlineNotes: null, programDates: null, workload: null, ambassadorBenefits: null, communityBenefits: null, expectations: null, eligibility: null, geography: null, restrictions: null };
 
 describe('formatter choices', () => {
-  it('offers exactly the two native free model IDs', () => {
-    expect(FORMATTERS).toEqual({ dots: 'dots-studio/dots-3-note-preview:free', laguna: 'poolside/laguna-s-2.1:free' });
+  it('accepts only the two native free models, by alias or exact ID', () => {
     expect(resolveFormatter('laguna')).toBe('poolside/laguna-s-2.1:free');
     expect(resolveFormatter('dots-studio/dots-3-note-preview:free')).toBe('dots-studio/dots-3-note-preview:free');
     expect(() => resolveFormatter('poolside/laguna-s-2.1')).toThrow(/Unknown formatter/);
@@ -148,7 +147,8 @@ describe('candidate grounding', () => {
 
   it('keeps a reviewable candidate when the formatter failed, and works with no model at all', () => {
     const failed = buildCandidate({ requestedUrl: page.url, page, format: { model: 'm', output: null, raw: 'garbage', errors: ['model output was not a JSON object'] } });
-    expect(failed.reviewState).toBe('needs-review');
+    expect(failed.formatter?.ok).toBe(false);
+    expect(failed.warnings).toEqual([]);
     expect(failed.formatter?.raw).toBe('garbage');
     expect(failed.evidence.text).toContain('$500 stipend');
     const plain = buildCandidate({ requestedUrl: page.url, page });

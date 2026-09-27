@@ -11,7 +11,7 @@ const ServiceAccountSchema = z.object({
     private_key: z.string().includes('PRIVATE KEY'),
     token_uri: z.string().url(),
 });
-export function credentialsPath() {
+function credentialsPath() {
     return env(ENV.googleCredentials) ?? env('GOOGLE_APPLICATION_CREDENTIALS');
 }
 /** Describe configured maintainer credentials without reading secret values into output. */
@@ -33,7 +33,7 @@ export async function describeMaintainerCredentials() {
 function base64url(input) {
     return Buffer.from(input).toString('base64url');
 }
-export function signJwt(sa, scope, nowSeconds) {
+function signJwt(sa, scope, nowSeconds) {
     const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
     const claims = base64url(JSON.stringify({ iss: sa.client_email, scope, aud: sa.token_uri, iat: nowSeconds, exp: nowSeconds + 3600 }));
     const signer = createSign('RSA-SHA256');
@@ -56,12 +56,11 @@ function allowedTokenUri(uri) {
 export async function loadMaintainerAuth(opts = {}) {
     const token = env(ENV.googleAccessToken);
     if (token)
-        return { principal: 'access token from environment', getToken: async () => token, warnings: [] };
+        return { principal: 'access token from environment', getToken: async () => token };
     const path = credentialsPath();
     if (!path) {
         throw new CliError(`Maintainer credentials are not configured. Set ${ENV.googleCredentials} to a service-account key file that has Editor access to the catalog, or ${ENV.googleAccessToken} to a short-lived OAuth token. Student commands never need this.`);
     }
-    const described = await describeMaintainerCredentials();
     let raw;
     try {
         raw = await readFile(path, 'utf8');
@@ -77,7 +76,6 @@ export async function loadMaintainerAuth(opts = {}) {
     let cached;
     return {
         principal: sa.data.client_email,
-        warnings: described.warnings,
         async getToken() {
             const now = Math.floor(Date.now() / 1000);
             if (cached && cached.expires - 60 > now)

@@ -1,5 +1,9 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { UsageError } from './errors.js';
+/** A string option's value, or undefined when it was not given. */
+export function str(v) {
+    return typeof v === 'string' ? v : undefined;
+}
 /** Refuse to overwrite an existing file unless --force was given. */
 export async function ensureWritable(path, force) {
     if (force)

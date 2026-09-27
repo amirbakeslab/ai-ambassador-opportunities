@@ -216,7 +216,7 @@ describe('sync against a Sheets API server', () => {
     process.env.AMBASSADOR_SHEETS_API_BASE = 'http://127.0.0.1:9/v4';
     const statuses: number[] = [];
     const client = (seq: number[]) =>
-      new SheetsClient('sheet-id-for-retry-test-000', { principal: 'p', getToken: async () => 't', warnings: [] }, (async () => {
+      new SheetsClient('sheet-id-for-retry-test-000', { principal: 'p', getToken: async () => 't' }, (async () => {
         const status = seq.shift() ?? 500;
         statuses.push(status);
         return new Response(JSON.stringify(status === 200 ? { replies: [] } : { error: { code: status, message: 'x' } }), { status, headers: { 'retry-after': '0' } });
@@ -229,7 +229,7 @@ describe('sync against a Sheets API server', () => {
     expect(statuses).toEqual([503]);
   });
 
-  it('plans a dry run from the published CSV without credentials', () => {
+  it('plans record changes and reports source rows it cannot write when there is no Sources tab', () => {
     const table = parseCatalogCsv(CATALOG_CSV);
     const plan = planChangeset(
       newChangeset(reviewed, [update('cursor-ambassadors', { workload: { from: 'Regular involvement; hours not published.', to: 'About 2 hours/week.' } })], [

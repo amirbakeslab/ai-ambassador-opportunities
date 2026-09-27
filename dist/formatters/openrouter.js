@@ -4,7 +4,7 @@ import { parseJson, request } from '../http.js';
 // https://openrouter.ai/docs (chat completions, structured outputs, errors, models list)
 const API = 'https://openrouter.ai/api/v1';
 /** Native formatter choices. Both are OpenRouter free variants; paid variants are never substituted. */
-export const FORMATTERS = {
+const FORMATTERS = {
     dots: 'dots-studio/dots-3-note-preview:free',
     laguna: 'poolside/laguna-s-2.1:free',
 };
@@ -26,7 +26,7 @@ const ModelEntry = z.object({
  * Free only if a prompt price is listed and every price component is zero.
  * Structured components (for example pricing overrides) must be empty.
  */
-export function isFreePricing(pricing) {
+function isFreePricing(pricing) {
     if (pricing.prompt === undefined)
         return false;
     return Object.values(pricing).every((v) => {
@@ -81,7 +81,7 @@ export const FORMATTABLE_FIELDS = [
     'restrictions',
 ];
 const nullableText = z.string().max(2000).nullable();
-export const FormatterOutputSchema = z
+const FormatterOutputSchema = z
     .object(Object.fromEntries(FORMATTABLE_FIELDS.map((f) => [f, nullableText])))
     .strict();
 const JSON_SCHEMA = {
@@ -108,7 +108,7 @@ export function extractJsonObject(text) {
     return parseJson(body.slice(start, end + 1));
 }
 const ChatResponse = z.object({
-    choices: z.array(z.object({ message: z.object({ content: z.string().nullish() }).nullish(), finish_reason: z.string().nullish() })).min(1),
+    choices: z.array(z.object({ message: z.object({ content: z.string().nullish() }).nullish() })).min(1),
 });
 const ErrorBody = z.object({ error: z.object({ code: z.union([z.number(), z.string()]).optional(), message: z.string().optional() }) });
 /**
@@ -144,9 +144,9 @@ export async function formatEvidence(input, opts) {
     if (res.status === 402)
         throw new QuotaError('OpenRouter', err.success ? err.data.error.message ?? 'payment required' : 'payment required');
     if (res.status === 401)
-        throw new ProviderError('OpenRouter', 'API key was rejected (401). Check OPENROUTER_API_KEY.', 401);
+        throw new ProviderError('OpenRouter', 'API key was rejected (401). Check OPENROUTER_API_KEY.');
     if (res.status !== 200)
-        throw new ProviderError('OpenRouter', err.success ? err.data.error.message ?? `HTTP ${res.status}` : `HTTP ${res.status}`, res.status);
+        throw new ProviderError('OpenRouter', err.success ? err.data.error.message ?? `HTTP ${res.status}` : `HTTP ${res.status}`);
     if (err.success)
         throw new ProviderError('OpenRouter', `model error: ${err.data.error.message ?? String(err.data.error.code)}`);
     const chat = ChatResponse.safeParse(json);

@@ -33,8 +33,8 @@ function check(res) {
     if (res.status === 402 || (tag && QUOTA_TAGS.has(tag)))
         throw new QuotaError('Exa', tag ?? msg);
     if (res.status === 401 || tag === 'INVALID_API_KEY')
-        throw new ProviderError('Exa', 'API key was rejected (401). Check EXA_API_KEY.', 401);
-    throw new ProviderError('Exa', `${msg}${tag ? ` [${tag}]` : ''}`, res.status);
+        throw new ProviderError('Exa', 'API key was rejected (401). Check EXA_API_KEY.');
+    throw new ProviderError('Exa', `${msg}${tag ? ` [${tag}]` : ''}`);
 }
 function headers(ctx) {
     return { 'x-api-key': ctx.apiKey };

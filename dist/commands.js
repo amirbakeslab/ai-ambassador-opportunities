@@ -1,13 +1,14 @@
-import { cacheDir, csvUrl, DEFAULT_SHEET_URL, env, ENV, maxRequests, TOOL_VERSION } from './config.js';
-import { describeOrigin, findRecord, loadCatalog, loadSnapshot, loadSources } from './catalog.js';
+import { cacheDir, DEFAULT_SHEET_URL, env, ENV, maxRequests } from './config.js';
+import { describeOrigin, findRecord, loadCatalog, loadSources } from './catalog.js';
 import { CliError, MissingKeyError, UsageError } from './errors.js';
-import { checkModel, formatEvidence, FORMATTERS, resolveFormatter } from './formatters/openrouter.js';
+import { checkModel, formatEvidence, resolveFormatter } from './formatters/openrouter.js';
 import { RequestBudget } from './http.js';
-import { ensureWritable, writeNewFile } from './io.js';
+import { ensureWritable, str, writeNewFile } from './io.js';
 import { buildCandidate, slugify } from './propose.js';
 import { cached, getProvider, providerKey } from './providers/index.js';
 import { directContent } from './providers/direct.js';
-import { maintainerOptions } from './maintainer/options.js';
+import { describeMaintainerCredentials } from './maintainer/google-auth.js';
+import { maintainerCommands } from './maintainer/commands.js';
 import { recordsToCsv } from './records.js';
 import { renderList, renderRecord } from './render.js';
 import { assertPublicUrl, presence, terminalSafe } from './safety.js';
@@ -24,9 +25,6 @@ const filterOptions = {
     category: { type: 'string' },
     text: { type: 'string' },
 };
-function str(v) {
-    return typeof v === 'string' ? v : undefined;
-}
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 function matchEnum(input, options, label) {
     return input.split(',').map((part) => {
@@ -36,7 +34,7 @@ function matchEnum(input, options, label) {
         return hit;
     });
 }
-export function filterRecords(records, v) {
+function filterRecords(records, v) {
     let out = records;
     const status = str(v.status);
     if (status) {
@@ -76,7 +74,7 @@ function urlKey(u) {
     }
 }
 /** Whether a URL is already a catalog record's application URL, or a source cited by records. */
-export function catalogMatches(url, records, sources) {
+function catalogMatches(url, records, sources) {
     const key = urlKey(url);
     const catalogId = records.find((r) => urlKey(r.url) === key)?.id ?? null;
     const sourceIds = new Set(sources.filter((s) => urlKey(s.url) === key).map((s) => s.id));
@@ -255,16 +253,15 @@ const propose = {
         const candidate = buildCandidate({ requestedUrl: url, page, format });
         const output = explicitOutput ?? `candidate-${candidate.record.id ?? slugify(new URL(url).hostname)}.json`;
         await writeNewFile(output, `${JSON.stringify(candidate, null, 2)}\n`, force);
-        const filled = candidate.formatter?.filledFields ?? [];
-        io.out(`Wrote ${output} (${candidate.reviewState}).`);
+        io.out(`Saved locally (not submitted): ${output}`);
+        const f = candidate.formatter;
         if (formatFailure)
-            io.out(`Formatting failed, so the candidate was saved without model output: ${formatFailure}`);
-        else if (candidate.formatter)
-            io.out(`Formatter ${candidate.formatter.model}: ${filled.length} field(s) filled from the page${candidate.formatter.ok ? '' : ', output failed validation'}.`);
+            io.out(`Formatting failed; the candidate has no model output: ${formatFailure}`);
+        else if (f)
+            io.out(`${f.model} filled ${f.filledFields.length} field(s)${f.ok ? '' : `; its output was rejected: ${f.errors.join('; ')}`}.`);
         for (const w of candidate.warnings)
-            io.out(`  note: ${w}`);
-        io.out('Unknown values stay null. Edit the file to add facts you verified, then submit it through a GitHub issue or pull request.');
-        io.out('Nothing was sent anywhere on your behalf.');
+            io.out(`  ${w}`);
+        io.out('Next: check each value against the source, fill in what you can, then open a proposal issue on GitHub.');
         return formatFailure ? 1 : 0;
     },
 };
@@ -274,42 +271,21 @@ const doctor = {
         const checks = [];
         const nodeMajor = Number(process.versions.node.split('.')[0]);
         checks.push({ name: 'Node.js', ok: nodeMajor >= 22, detail: `v${process.versions.node} (needs 22+)` });
-        checks.push({ name: 'CLI version', ok: true, detail: TOOL_VERSION });
         try {
             const cat = await loadCatalog({ mode: v.offline ? 'offline' : 'refresh' });
             checks.push({
                 name: 'Catalog',
                 ok: cat.origin.kind === 'live' ? cat.table.issues.length === 0 : null,
-                detail: `${cat.table.records.length} valid records, ${cat.table.issues.length} invalid row(s), ${cat.table.header.length || 22} columns. ${describeOrigin(cat.origin)}`,
+                detail: `${cat.table.records.length} valid records, ${cat.table.issues.length} invalid row(s). ${describeOrigin(cat.origin)}`,
             });
         }
         catch (e) {
             checks.push({ name: 'Catalog', ok: false, detail: e instanceof Error ? e.message : String(e) });
         }
-        checks.push({ name: 'Catalog feed URL', ok: true, detail: csvUrl() });
-        checks.push({ name: 'Cache directory', ok: true, detail: cacheDir() });
-        const snap = loadSnapshot();
-        checks.push({ name: 'Bundled snapshot', ok: true, detail: `${snap.records.length} records captured ${snap.capturedAt}` });
+        checks.push({ name: 'Cache directory', ok: null, detail: cacheDir() });
         checks.push({ name: 'EXA_API_KEY (search default)', ok: null, detail: presence(env(ENV.exaKey)) });
         checks.push({ name: 'FIRECRAWL_API_KEY (optional)', ok: null, detail: presence(env(ENV.firecrawlKey)) });
         checks.push({ name: 'OPENROUTER_API_KEY (optional formatting)', ok: null, detail: presence(env(ENV.openrouterKey)) });
-        if (!v.offline) {
-            const budget = new RequestBudget(Object.keys(FORMATTERS).length + 1);
-            for (const id of Object.values(FORMATTERS)) {
-                try {
-                    const a = await checkModel(id, { budget });
-                    checks.push({
-                        name: `Formatter ${id}`,
-                        ok: a.available && a.free,
-                        detail: a.available ? `${a.free ? 'listed, free' : a.reason}; ${a.structuredOutputs ? 'enforced JSON schema' : 'JSON by instruction only, validated locally'}` : (a.reason ?? 'unavailable'),
-                    });
-                }
-                catch (e) {
-                    checks.push({ name: `Formatter ${id}`, ok: false, detail: e instanceof Error ? e.message : String(e) });
-                }
-            }
-        }
-        const { describeMaintainerCredentials } = await import('./maintainer/google-auth.js');
         const creds = await describeMaintainerCredentials();
         checks.push({ name: 'Maintainer Google credentials', ok: creds.warnings.length ? false : null, detail: [creds.detail, ...creds.warnings].join('; ') });
         if (v.json) {
@@ -318,20 +294,11 @@ const doctor = {
         else {
             for (const c of checks)
                 io.out(`${c.ok === true ? 'ok  ' : c.ok === false ? 'FAIL' : 'info'}  ${c.name}: ${c.detail}`);
-            io.out('\nKey values are never printed. Browsing needs no keys; search/propose use your own.');
+            io.out('\nKey values are never printed. Formatter models are checked when you use --format-with.');
         }
         return checks.some((c) => c.ok === false) ? 1 : 0;
     },
 };
-function lazy(name) {
-    return {
-        options: {},
-        async run(p, v, io) {
-            const mod = await import('./maintainer/commands.js');
-            return mod.maintainerCommands[name].run(p, v, io);
-        },
-    };
-}
 export const commands = {
     list,
     show,
@@ -339,8 +306,5 @@ export const commands = {
     search,
     propose,
     doctor,
-    review: { ...lazy('review'), options: maintainerOptions.review },
-    sync: { ...lazy('sync'), options: maintainerOptions.sync },
-    backup: { ...lazy('backup'), options: maintainerOptions.backup },
-    restore: { ...lazy('restore'), options: maintainerOptions.restore },
+    ...maintainerCommands,
 };
