@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { main } from '../src/cli.js';
+import { commands } from '../src/commands.js';
 import { buildCandidate } from '../src/propose.js';
 import { reviewCandidate } from '../src/maintainer/changeset.js';
 import { parseCatalogCsv } from '../src/records.js';
@@ -46,6 +47,14 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 }
 
 describe('student commands', () => {
+  it('documents every command and option in --help', async () => {
+    const help = (await run('--help')).out;
+    for (const [name, spec] of Object.entries(commands)) {
+      expect(help, `command ${name}`).toMatch(new RegExp(`ambassador ${name}\\b`));
+      for (const option of Object.keys(spec.options)) expect(help, `${name} --${option}`).toContain(`--${option}`);
+    }
+  });
+
   it('prints help and version, and rejects unknown commands and flags', async () => {
     expect((await run('--help')).out).toMatch(/ambassador list/);
     expect((await run('--version')).out).toMatch(/^\d+\.\d+\.\d+$/);
@@ -112,6 +121,97 @@ describe('student commands', () => {
     delete process.env.EXA_API_KEY;
     expect(d.out).toMatch(/EXA_API_KEY \(search default\): set/);
     expect(d.out).not.toMatch(/secret-value/);
+  });
+});
+
+describe('research commands with mocked provider HTTP (offline regression coverage)', () => {
+  const realFetch = globalThis.fetch;
+  let calls: string[] = [];
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    delete process.env.EXA_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
+  });
+
+  /** Route provider hosts to canned responses; loopback (the local catalog feed) goes to the real fetch. */
+  function route(handlers: Record<string, () => Response>) {
+    calls = [];
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.startsWith('http://127.0.0.1')) return realFetch(input, init);
+      calls.push(url);
+      const key = Object.keys(handlers).find((k) => url.startsWith(k));
+      if (!key) throw new Error(`unexpected request ${url}`);
+      return handlers[key]!();
+    }) as typeof fetch;
+  }
+  const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
+  const models = () =>
+    json(200, { data: [{ id: 'poolside/laguna-s-2.1:free', pricing: { prompt: '0', completion: '0' }, supported_parameters: ['max_tokens'] }] });
+  const exaContent = () =>
+    json(200, { results: [{ url: 'https://93.184.216.34/program', title: 'Campus Program', text: 'Campus Program. Leaders host workshops.' }], statuses: [{ id: 'x', status: 'success' }] });
+
+  it('keeps the evidence-based candidate when the formatter is rate limited', async () => {
+    process.env.EXA_API_KEY = 'test';
+    process.env.OPENROUTER_API_KEY = 'test';
+    route({
+      'https://openrouter.ai/api/v1/models': models,
+      'https://api.exa.ai/contents': exaContent,
+      'https://openrouter.ai/api/v1/chat/completions': () => json(429, { error: { code: 429, message: 'rate limited upstream' } }, { 'retry-after': '0' }),
+    });
+    const dir = mkdtempSync(join(tmpdir(), 'ambassador-propose-'));
+    const file = join(dir, 'c.json');
+    const r = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'laguna', '--output', file);
+    expect(r.code).toBe(1);
+    expect(r.out).toMatch(/Formatting failed, so the candidate was saved without model output: OpenRouter: rate limited/);
+    const saved = JSON.parse(readFileSync(file, 'utf8'));
+    expect(saved.reviewState).toBe('needs-review');
+    expect(saved.evidence.text).toContain('Leaders host workshops');
+    expect(saved.formatter.errors.join()).toMatch(/rate limited/);
+    expect(saved.record.company).toBeNull();
+  });
+
+  it('checks formatter availability and the output file before spending provider credits', async () => {
+    process.env.EXA_API_KEY = 'test';
+    process.env.OPENROUTER_API_KEY = 'test';
+    route({ 'https://openrouter.ai/api/v1/models': () => json(200, { data: [] }), 'https://api.exa.ai/contents': exaContent });
+    const gone = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'laguna', '--output', join(mkdtempSync(join(tmpdir(), 'p-')), 'c.json'));
+    expect(gone.code).toBe(2);
+    expect(gone.err).toMatch(/unavailable: not currently listed/);
+    expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
+
+    const dir = mkdtempSync(join(tmpdir(), 'p-'));
+    writeFileSync(join(dir, 'exists.json'), '{}');
+    const exists = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--output', join(dir, 'exists.json'));
+    expect(exists.code).toBe(2);
+    expect(exists.err).toMatch(/already exists/);
+    expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
+
+    delete process.env.OPENROUTER_API_KEY;
+    const noKey = await run('propose', 'https://93.184.216.34/program', '--provider', 'exa', '--format-with', 'dots', '--output', join(dir, 'k.json'));
+    expect(noKey.err).toMatch(/OPENROUTER_API_KEY is not set/);
+    expect(calls.some((u) => u.includes('api.exa.ai'))).toBe(false);
+  });
+
+  it('prints one-line snippets and flags results the catalog already has or cites', async () => {
+    process.env.EXA_API_KEY = 'test';
+    route({
+      'https://api.exa.ai/search': () =>
+        json(200, {
+          results: [
+            { url: 'https://www.microsoft.com/en-us/microsoft-copilot/for-individuals/copilot-student-ambassador', title: 'Be a Copilot Ambassador', highlights: ['# Be a Copilot Ambassador\nCopilot helps students\n...\n- thrive'] },
+            { url: 'https://cursor.com/ambassadors/', title: 'Cursor Ambassadors' },
+            { url: 'https://new.example/program', title: 'New Program' },
+          ],
+        }),
+    });
+    const r = await run('search', 'copilot ambassador', '--limit', '3', '--no-cache');
+    expect(r.code).toBe(0);
+    expect(r.out).toMatch(/Be a Copilot Ambassador {2}\[already cited by: microsoft-copilot-fall-2026\]/);
+    expect(r.out).toMatch(/Be a Copilot Ambassador Copilot helps students thrive/);
+    expect(r.out).toMatch(/Cursor Ambassadors {2}\[already cited by: cursor-ambassadors\]/);
+    expect(r.out).not.toMatch(/New Program {2}\[/);
   });
 });
 

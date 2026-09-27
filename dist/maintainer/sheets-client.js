@@ -72,10 +72,10 @@ export class SheetsClient {
             headers: { authorization: `Bearer ${token}` },
             body: init.body,
             fetchImpl: this.fetchImpl,
-            // Sheets enforces per-minute quotas, so back off for up to about a minute.
+            // Sheets enforces per-minute quotas; backoff (2s, 4s ... 64s) outlasts one quota window.
             // Writes retry only on 429 (the request was rejected, so nothing was applied);
             // a timed-out or 5xx write might have been applied and is never retried.
-            retries: 5,
+            retries: 6,
             retryStatuses: init.write ? [429] : undefined,
             retryNetworkErrors: !init.write,
             maxRetryAfterSeconds: 60,

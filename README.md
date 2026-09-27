@@ -86,7 +86,7 @@ ambassador search --provider firecrawl "campus developer programs" --limit 5
 ambassador propose https://example.com/campus-program --output candidate.json
 ```
 
-- Search results are leads, not verified openings. Results already in the catalog are marked.
+- Search results are leads, not verified openings. Results that are already a catalog entry, or already cited in the Sources tab, are marked.
 - Free allowances are each provider's account policy and can change. This tool does not guarantee free use. Check their pricing pages.
 - Each command makes at most 5 provider requests by default (`--max-requests`, `AMBASSADOR_MAX_REQUESTS`). Retries are bounded and honour `Retry-After`. When a provider reports exhausted credits or budget, the command stops. It never switches to another provider or a paid model.
 - Identical search and page requests are cached for 24 hours. Use `--no-cache` to skip the cache.
@@ -103,9 +103,9 @@ ambassador propose <url> --format-with dots     # dots-studio/dots-3-note-previe
 ambassador propose <url> --format-with laguna   # poolside/laguna-s-2.1:free
 ```
 
-- Only these two exact OpenRouter model IDs are offered. Before each use, the tool checks OpenRouter's model list and refuses a model that is missing or has any non-zero price. It never substitutes another model.
+- Only these two exact OpenRouter model IDs are offered. Before each use, the tool checks OpenRouter's model list and refuses a model that is missing or has any non-zero price. It never substitutes another model. This check, the key check and the output-file check all run before any paid page fetch.
 - If OpenRouter lists structured-output support for a model (currently Dots), the tool requests an enforced JSON schema. Other models (currently Laguna) are prompted for JSON, and the tool validates the output itself.
-- Model output is untrusted. Any value whose content is not found in the page text is discarded. So is a deadline date that does not appear on the page. Invalid output leaves a reviewable candidate with the raw response attached.
+- Model output is untrusted. Any value whose content is not found in the page text is discarded. So is a deadline date that does not appear on the page. Invalid output leaves a reviewable candidate with the raw response attached. If the model is rate limited, out of credit or unreachable, the candidate is still saved from the page evidence, and the command exits with code 1.
 - Models never set the status, assessment or local applicability. Maintainers decide those.
 
 ## Contributing

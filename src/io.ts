@@ -15,14 +15,18 @@ export interface CommandSpec {
   run: Handler;
 }
 
+/** Refuse to overwrite an existing file unless --force was given. */
+export async function ensureWritable(path: string, force: boolean): Promise<void> {
+  if (force) return;
+  const exists = await access(path).then(
+    () => true,
+    () => false,
+  );
+  if (exists) throw new UsageError(`${path} already exists. Use --force to overwrite.`);
+}
+
 export async function writeNewFile(path: string, content: string, force: boolean): Promise<void> {
-  if (!force) {
-    const exists = await access(path).then(
-      () => true,
-      () => false,
-    );
-    if (exists) throw new UsageError(`${path} already exists. Use --force to overwrite.`);
-  }
+  await ensureWritable(path, force);
   await writeFile(path, content, 'utf8');
 }
 

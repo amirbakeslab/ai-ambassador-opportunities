@@ -10,25 +10,29 @@ Browse (no account or API key needed):
   ambassador list [--status rolling] [--open] [--assessment "worth considering"]
                   [--company NAME] [--category TEXT] [--text WORDS] [--json]
   ambassador show <id> [--json]
-  ambassador export [--format csv|json] [--output FILE] [list filters]
-  ambassador doctor [--offline]
+  ambassador export [--format csv|json] [--output FILE] [--force] [list filters]
+  ambassador doctor [--offline] [--json]
 
 Research (uses your own API keys, only when you run these):
-  ambassador search "AI student ambassador" [--provider exa|firecrawl] [--limit 8]
+  ambassador search "AI student ambassador" [--provider exa|firecrawl] [--limit 8] [--json]
   ambassador propose <url> [--provider exa|firecrawl|direct] [--format-with dots|laguna]
-                     [--output candidate.json]
+                     [--output candidate.json] [--force]
+    Without --provider, propose uses Exa when EXA_API_KEY is set, else a direct fetch.
+    If formatting fails, the candidate is still saved from the page evidence (exit 1).
 
 Maintainers (need separate Google edit credentials):
-  ambassador review <candidate.json...> [--output changes.json]
+  ambassador review <candidate.json...> [--output changes.json] [--force] [--against sheet|csv]
   ambassador sync --dry-run [--changes changes.json]
-  ambassador sync --apply --sheet-id ID [--changes changes.json]
-  ambassador backup [--sheet-id ID] [--output-dir DIR]
-  ambassador restore <backup.json> --dry-run | --apply --sheet-id ID
+  ambassador sync --apply --sheet-id ID [--changes changes.json] [--backup-dir DIR] [--allow-stale]
+  ambassador backup [--sheet-id ID] [--output-dir DIR] [--public-csv]
+  ambassador restore <backup.json> --dry-run | --apply --sheet-id ID [--backup-dir DIR]
+    Maintainer commands also accept --tab NAME (default Opportunities).
 
 Common options:
   --offline        use the cached copy (or bundled snapshot) without network
   --refresh        always fetch the live published feed
   --max-requests N cap provider requests for one command (default 5)
+  --no-cache       skip the 24-hour cache of identical search/page requests
   -h, --help       show help;  -v, --version  show version
 
 Catalog: ${DEFAULT_SHEET_URL}

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ProviderError, QuotaError } from '../errors.js';
 import { parseJson, request } from '../http.js';
-import { clip, MAX_EVIDENCE_CHARS, MAX_SNIPPET_CHARS } from './types.js';
+import { clip, MAX_EVIDENCE_CHARS, MAX_SNIPPET_CHARS, snippetText } from './types.js';
 // https://docs.firecrawl.dev/api-reference/endpoint/search and /scrape (API v2)
 const BASE = 'https://api.firecrawl.dev/v2';
 const SearchResponse = z.object({
@@ -59,7 +59,7 @@ export const firecrawl = {
             title: r.title ?? null,
             url: r.url,
             publishedDate: null,
-            snippet: clip(r.description ?? '', MAX_SNIPPET_CHARS),
+            snippet: snippetText(r.description ?? '', MAX_SNIPPET_CHARS),
         }));
     },
     async content(url, ctx) {

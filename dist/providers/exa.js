@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ProviderError, QuotaError } from '../errors.js';
 import { parseJson, request } from '../http.js';
-import { clip, MAX_EVIDENCE_CHARS, MAX_SNIPPET_CHARS } from './types.js';
+import { clip, MAX_EVIDENCE_CHARS, MAX_SNIPPET_CHARS, snippetText } from './types.js';
 // https://exa.ai/docs/reference/search and /reference/get-contents (OpenAPI "Exa Public API" 2.0.0)
 const BASE = 'https://api.exa.ai';
 const ResultSchema = z.object({
@@ -58,7 +58,7 @@ export const exa = {
             title: r.title ?? null,
             url: r.url,
             publishedDate: r.publishedDate ?? null,
-            snippet: clip((r.highlights ?? []).join(' … ') || r.text || '', MAX_SNIPPET_CHARS),
+            snippet: snippetText((r.highlights ?? []).join(' … ') || r.text || '', MAX_SNIPPET_CHARS),
         }));
     },
     async content(url, ctx) {

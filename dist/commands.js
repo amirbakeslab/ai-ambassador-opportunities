@@ -1,9 +1,9 @@
 import { cacheDir, csvUrl, DEFAULT_SHEET_URL, env, ENV, maxRequests, TOOL_VERSION } from './config.js';
 import { describeOrigin, findRecord, loadCatalog, loadSnapshot, loadSources } from './catalog.js';
-import { MissingKeyError, UsageError } from './errors.js';
+import { CliError, MissingKeyError, UsageError } from './errors.js';
 import { checkModel, formatEvidence, FORMATTERS, resolveFormatter } from './formatters/openrouter.js';
 import { RequestBudget } from './http.js';
-import { writeNewFile } from './io.js';
+import { ensureWritable, writeNewFile } from './io.js';
 import { buildCandidate, slugify } from './propose.js';
 import { cached, getProvider, providerKey } from './providers/index.js';
 import { directContent } from './providers/direct.js';
@@ -65,6 +65,23 @@ export function filterRecords(records, v) {
         });
     }
     return out;
+}
+function urlKey(u) {
+    try {
+        const x = new URL(u);
+        return `${x.hostname.replace(/^www\./, '').toLowerCase()}${x.pathname.replace(/\/$/, '')}`;
+    }
+    catch {
+        return u;
+    }
+}
+/** Whether a URL is already a catalog record's application URL, or a source cited by records. */
+export function catalogMatches(url, records, sources) {
+    const key = urlKey(url);
+    const catalogId = records.find((r) => urlKey(r.url) === key)?.id ?? null;
+    const sourceIds = new Set(sources.filter((s) => urlKey(s.url) === key).map((s) => s.id));
+    const citedBy = records.filter((r) => r.id !== catalogId && r.sourceIds.some((id) => sourceIds.has(id))).map((r) => r.id);
+    return { catalogId, citedBy };
 }
 async function catalogFor(v) {
     if (v.offline && v.refresh)
@@ -154,33 +171,24 @@ const search = {
         const budget = new RequestBudget(maxRequests(str(v['max-requests'])));
         const { value: results, hit } = await cached('search', [provider.name, query, limit], !v['no-cache'], () => provider.search(query, limit, { apiKey, budget }));
         let known = [];
+        let sources = [];
         try {
             known = (await loadCatalog({ mode: 'auto' })).table.records;
+            sources = (await loadSources()).sources;
         }
         catch {
-            known = [];
+            // Matching against the catalog is a convenience; search results stand on their own.
         }
-        const inCatalog = (url) => {
-            const key = (u) => {
-                try {
-                    const x = new URL(u);
-                    return `${x.hostname.replace(/^www\./, '')}${x.pathname.replace(/\/$/, '')}`;
-                }
-                catch {
-                    return u;
-                }
-            };
-            return known.find((r) => key(r.url) === key(url))?.id;
-        };
+        const annotated = results.map((r) => ({ ...r, ...catalogMatches(r.url, known, sources) }));
         if (v.json) {
-            io.out(JSON.stringify({ provider: provider.name, query, cached: hit, results: results.map((r) => ({ ...r, catalogId: inCatalog(r.url) ?? null })) }, null, 2));
+            io.out(JSON.stringify({ provider: provider.name, query, cached: hit, results: annotated }, null, 2));
             return;
         }
         if (results.length === 0)
             io.out('No results.');
-        results.forEach((r, i) => {
-            const id = inCatalog(r.url);
-            io.out(`${i + 1}. ${terminalSafe(r.title ?? '(untitled)')}${id ? `  [already in catalog: ${id}]` : ''}`);
+        annotated.forEach((r, i) => {
+            const note = r.catalogId ? `  [already in catalog: ${r.catalogId}]` : r.citedBy.length ? `  [already cited by: ${r.citedBy.join(', ')}]` : '';
+            io.out(`${i + 1}. ${terminalSafe(r.title ?? '(untitled)')}${note}`);
             io.out(`   ${terminalSafe(r.url)}${r.publishedDate ? `  (published ${r.publishedDate.slice(0, 10)})` : ''}`);
             if (r.snippet)
                 io.out(`   ${terminalSafe(r.snippet)}`);
@@ -206,18 +214,15 @@ const propose = {
         const budget = new RequestBudget(maxRequests(str(v['max-requests'])));
         const providerName = str(v.provider) ?? (env(ENV.exaKey) ? 'exa' : 'direct');
         const noCache = Boolean(v['no-cache']);
-        let page;
-        if (providerName === 'direct') {
-            page = (await cached('content', ['direct', url], !noCache, () => directContent(url, { budget }))).value;
-        }
-        else {
-            const provider = getProvider(providerName);
-            const apiKey = providerKey(provider);
-            page = (await cached('content', [provider.name, url], !noCache, () => provider.content(url, { apiKey, budget }))).value;
-        }
-        io.err(`Fetched ${page.text.length} characters of evidence via ${page.fetcher}.`);
-        let format;
+        const force = Boolean(v.force);
+        const explicitOutput = str(v.output);
+        // Check everything that can fail cheaply before spending provider credits.
+        if (explicitOutput)
+            await ensureWritable(explicitOutput, force);
+        const provider = providerName === 'direct' ? null : getProvider(providerName);
+        const apiKey = provider ? providerKey(provider) : null;
         const choice = str(v['format-with']);
+        let formatter = null;
         if (choice) {
             const model = resolveFormatter(choice);
             const key = env(ENV.openrouterKey);
@@ -227,19 +232,40 @@ const propose = {
             if (!availability.available || !availability.free) {
                 throw new UsageError(`Formatter ${model} is unavailable: ${availability.reason}. Re-run without --format-with; no other model is substituted.`);
             }
-            format = await formatEvidence({ model, url: page.url, title: page.title, text: page.text, apiKey: key, structuredOutputs: availability.structuredOutputs }, { budget });
+            formatter = { model, key, structuredOutputs: availability.structuredOutputs };
+        }
+        const page = provider
+            ? (await cached('content', [provider.name, url], !noCache, () => provider.content(url, { apiKey: apiKey, budget }))).value
+            : (await cached('content', ['direct', url], !noCache, () => directContent(url, { budget }))).value;
+        io.err(`Fetched ${page.text.length} characters of evidence via ${page.fetcher}.`);
+        let format;
+        let formatFailure = null;
+        if (formatter) {
+            try {
+                format = await formatEvidence({ model: formatter.model, url: page.url, title: page.title, text: page.text, apiKey: formatter.key, structuredOutputs: formatter.structuredOutputs }, { budget });
+            }
+            catch (e) {
+                // Keep the evidence: a rate-limited, exhausted or failing model must not cost the candidate.
+                if (!(e instanceof CliError))
+                    throw e;
+                formatFailure = e.message;
+                format = { model: formatter.model, output: null, raw: null, errors: [e.message] };
+            }
         }
         const candidate = buildCandidate({ requestedUrl: url, page, format });
-        const output = str(v.output) ?? `candidate-${candidate.record.id ?? slugify(new URL(url).hostname)}.json`;
-        await writeNewFile(output, `${JSON.stringify(candidate, null, 2)}\n`, Boolean(v.force));
+        const output = explicitOutput ?? `candidate-${candidate.record.id ?? slugify(new URL(url).hostname)}.json`;
+        await writeNewFile(output, `${JSON.stringify(candidate, null, 2)}\n`, force);
         const filled = candidate.formatter?.filledFields ?? [];
         io.out(`Wrote ${output} (${candidate.reviewState}).`);
-        if (candidate.formatter)
+        if (formatFailure)
+            io.out(`Formatting failed, so the candidate was saved without model output: ${formatFailure}`);
+        else if (candidate.formatter)
             io.out(`Formatter ${candidate.formatter.model}: ${filled.length} field(s) filled from the page${candidate.formatter.ok ? '' : ', output failed validation'}.`);
         for (const w of candidate.warnings)
             io.out(`  note: ${w}`);
         io.out('Unknown values stay null. Edit the file to add facts you verified, then submit it through a GitHub issue or pull request.');
         io.out('Nothing was sent anywhere on your behalf.');
+        return formatFailure ? 1 : 0;
     },
 };
 const doctor = {

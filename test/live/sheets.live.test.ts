@@ -3,17 +3,19 @@
  * the catalog: set AMBASSADOR_TEST_SHEET_ID to that copy and
  * AMBASSADOR_GOOGLE_CREDENTIALS to a service account with Editor access to it.
  * It refuses to run against the published catalog. The published catalog is
- * only read (never written) to report which protected ranges would block this
+ * only read (never written) to check which protected ranges apply to this
  * principal there.
  *
  * The test restores the copy at the end: changed cells via `restore`, and the
- * rows it appended via a test-only row deletion (the CLI itself never deletes).
+ * rows it appended via a test-only cleanup (the CLI itself never deletes).
  */
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { main } from '../../src/cli.js';
 import { DEFAULT_SHEET_ID } from '../../src/config.js';
+import { buildCandidate } from '../../src/propose.js';
 import { ConflictError } from '../../src/errors.js';
 import { newChangeset } from '../../src/maintainer/changeset.js';
 import { loadMaintainerAuth } from '../../src/maintainer/google-auth.js';
@@ -131,19 +133,22 @@ describe.runIf(enabled)('live Google Sheets (disposable test copy)', () => {
     expect(initial.sources?.byId.size).toBeGreaterThanOrEqual(16);
   });
 
-  it('reads the published catalog (read-only) and reports that adding records there is blocked by the protected ID column', async () => {
+  it('reads the published catalog (read-only): IDs are editable by the maintainer, headers stay protected', async () => {
     const live = new SheetsClient(DEFAULT_SHEET_ID, await loadMaintainerAuth());
     const state = await readSheetState(live, TAB);
     expect(state.opportunities.table.records.length).toBeGreaterThanOrEqual(13);
+    // The owner granted the maintainer on the stable-ID protection, so a planned add is not blocked.
     const plan = planChangeset(newChangeset(reviewed, [{ action: 'add', id: TEST_ID, record: record() }], []), state);
     const blocked = protectedWrites(plan, state);
-    // Documented limitation: the service account is not an editor of the live stable-ID protection.
     console.info(`[live catalog, read-only] protected cells for a hypothetical add: ${blocked.join(' | ') || 'none'}`);
-    expect(blocked.some((b) => b.includes('Opportunity ID'))).toBe(true);
-    // Updates to existing records avoid the ID column entirely.
-    const cur = state.opportunities.table.records[0]!;
-    const upd = planChangeset(newChangeset(reviewed, [{ action: 'update', id: cur.id, fields: { workload: { from: cur.workload, to: `${cur.workload} (preview)` } } }], []), state);
-    expect(protectedWrites(upd, state)).toEqual([]);
+    expect(blocked).toEqual([]);
+    // Header protections remain owner-only, and the preflight still reports them.
+    const headerWrite = { ...plan, appends: [], writes: [{ id: '(header)', field: 'company' as const, rowIndex: 0, columnIndex: 0, from: 'Company', to: 'Company' }] };
+    const headerBlocked = protectedWrites(headerWrite, state);
+    console.info(`[live catalog, read-only] preflight for a header write: ${headerBlocked.join(' | ')}`);
+    expect(headerBlocked).toHaveLength(1);
+    expect(headerBlocked[0]).toMatch(/Opportunities!R1C1 .* is in protected range 1664011227/);
+    expect(state.sources?.info.blocked.some((b) => b.startRow === 0 && b.endRow === 1)).toBe(true);
   });
 
   it('updates only the changed cell, backs up first and reads back', async () => {
@@ -230,9 +235,80 @@ describe.runIf(enabled)('live Google Sheets (disposable test copy)', () => {
     expect(get(after, TEST_ID)).toBeDefined();
   });
 
+  it('runs the maintainer CLI end to end: review, sync dry-run/apply, repeat, stale plan, backup, restore', async () => {
+    const out: string[] = [];
+    const err: string[] = [];
+    const cli = async (...argv: string[]) => {
+      out.length = 0;
+      err.length = 0;
+      const code = await main(argv, { out: (s) => out.push(s), err: (s) => err.push(s) });
+      return { code, out: out.join('\n'), err: err.join('\n') };
+    };
+    const dir = mkdtempSync(join(tmpdir(), 'ambassador-live-cli-'));
+    const cliId = `${TEST_ID}-cli`;
+    // An addition, reviewed from a candidate file.
+    const add = buildCandidate({ requestedUrl: 'https://example.com/live-cli', page: { url: 'https://example.com/live-cli', title: 'Live CLI test', text: 'Live CLI test page.', fetcher: 'direct' } });
+    Object.assign(add.record, { id: cliId, company: 'Live Test Co', program: 'CLI flow row', assessment: 'Low value', assessmentReason: 'Automated test row.' });
+    add.sources[0]!.id = `${cliId}-src`;
+    add.record.sourceIds = [`${cliId}-src`];
+    // An update to an existing record: only the stated field changes.
+    const target = initial.opportunities.table.records.find((r) => r.id === 'openai-campus-network')!;
+    const upd = buildCandidate({ requestedUrl: target.url, page: { url: target.url, title: null, text: 'x', fetcher: 'direct' } });
+    Object.assign(upd.record, { id: target.id, workload: `CLI live test ${stamp}`, lastChecked: null, sourceIds: [] });
+    writeFileSync(join(dir, 'add.json'), JSON.stringify(add));
+    writeFileSync(join(dir, 'upd.json'), JSON.stringify(upd));
+    const changes = join(dir, 'changes.json');
+
+    const review = await cli('review', join(dir, 'add.json'), join(dir, 'upd.json'), '--output', changes, '--sheet-id', SHEET!);
+    expect(review.code, review.err).toBe(0);
+    expect(review.out).toMatch(new RegExp(`ADD ${cliId}`));
+    expect(review.out).toMatch(/UPDATE openai-campus-network[\s\S]*~ Time commitment/);
+
+    const dry = await cli('sync', '--dry-run', '--changes', changes, '--sheet-id', SHEET!);
+    expect(dry.code, dry.err).toBe(0);
+    expect(dry.out).not.toMatch(/BLOCKED/);
+    expect(dry.out).toMatch(/1 cell update\(s\), 1 new record\(s\), 1 new source\(s\)/);
+
+    const backups = join(dir, 'backups');
+    const apply = await cli('sync', '--apply', '--changes', changes, '--sheet-id', SHEET!, '--backup-dir', backups);
+    expect(apply.code, apply.err).toBe(0);
+    expect(apply.out).toMatch(/Readback verified every written value/);
+    const preApplyBackup = /Backup: (\S+\.json)/.exec(apply.out)![1]!;
+
+    const again = await cli('sync', '--apply', '--changes', changes, '--sheet-id', SHEET!, '--backup-dir', backups);
+    expect(again.code, again.err).toBe(0);
+    expect(again.out).toMatch(/Already up to date/);
+
+    // A stale plan: its reviewed value no longer matches the Sheet.
+    const stale = JSON.parse(readFileSync(changes, 'utf8'));
+    stale.changes = stale.changes.filter((c: { action: string }) => c.action === 'update');
+    stale.changes[0].fields.workload.to = 'A different edit';
+    stale.sources = [];
+    writeFileSync(join(dir, 'stale.json'), JSON.stringify(stale));
+    const before = (await readSheetState(client, TAB)).fingerprint;
+    const rejected = await cli('sync', '--apply', '--changes', join(dir, 'stale.json'), '--sheet-id', SHEET!, '--backup-dir', backups);
+    expect(rejected.code, rejected.err).toBe(3);
+    expect(rejected.err).toMatch(/Sync stopped; nothing was written/);
+    expect((await readSheetState(client, TAB)).fingerprint).toBe(before);
+
+    const backup = await cli('backup', '--sheet-id', SHEET!, '--output-dir', join(dir, 'manual'));
+    expect(backup.code, backup.err).toBe(0);
+    expect(backup.out).toMatch(/Backup of \d+ records and \d+ sources/);
+
+    const preview = await cli('restore', preApplyBackup, '--dry-run', '--sheet-id', SHEET!);
+    expect(preview.code, preview.err).toBe(0);
+    expect(preview.out).toMatch(new RegExp(`kept   ${cliId}`));
+    const restored = await cli('restore', preApplyBackup, '--apply', '--sheet-id', SHEET!, '--backup-dir', backups);
+    expect(restored.code, restored.err).toBe(0);
+    expect(restored.out).toMatch(/Readback verified every written value/);
+    const after = await readSheetState(client, TAB);
+    expect(get(after, 'openai-campus-network')).toEqual(target);
+    expect(get(after, cliId)).toBeDefined();
+  });
+
   it('leaves the copy with the same values as it started after test cleanup', async () => {
     const removed = await cleanup();
-    expect(removed.deleted + removed.cleared).toBe(2);
+    expect(removed.deleted + removed.cleared).toBe(4);
     const final = await readSheetState(client, TAB);
     expect(final.opportunities.grid).toEqual(initial.opportunities.grid);
     expect(final.sources?.grid).toEqual(initial.sources?.grid);

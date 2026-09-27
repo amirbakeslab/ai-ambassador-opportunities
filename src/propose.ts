@@ -147,7 +147,7 @@ export function buildCandidate(input: {
       filled = applied.filled;
       warnings.push(...applied.warnings);
     } else {
-      warnings.push(`formatter output failed validation; fields left unknown (${errors.join('; ')})`);
+      warnings.push(`formatter gave no usable output; fields left unknown (${errors.join('; ')})`);
     }
     formatter = { model: f.model, ok: errors.length === 0, filledFields: filled, errors, raw: f.raw };
     if (record.company && record.program) {

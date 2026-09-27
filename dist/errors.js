@@ -31,7 +31,7 @@ export class QuotaError extends CliError {
 export class RateLimitError extends CliError {
     retryAfterSeconds;
     constructor(provider, retryAfterSeconds) {
-        super(`${provider}: rate limited${retryAfterSeconds !== null ? ` (retry after ${retryAfterSeconds}s)` : ''}. Try again later or lower --limit.`);
+        super(`${provider}: rate limited${retryAfterSeconds !== null ? ` (retry after ${retryAfterSeconds}s)` : ''}. Wait and try again later.`);
         this.retryAfterSeconds = retryAfterSeconds;
         this.name = 'RateLimitError';
     }
